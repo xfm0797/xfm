@@ -1,7 +1,7 @@
 {
   "name": "xfmpress",
   "version": "0.1.0",
-  "description": "Zero-dependency static site generator for Node.js — 极致性能、多线程渲染、主题与插件系统",
+  "description": "Zero-dependency static site generator for Node.js — multi-threaded rendering, Nunjucks-style templates, drop-in themes and plugins",
   "bin": {
     "xfm": "bin/xfm.js"
   },
@@ -16,7 +16,8 @@
     "themes",
     "INSTALL.md",
     "README_CN.md",
-    "INSTALL_CN.md"
+    "INSTALL_CN.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "test": "node test/run.js",
