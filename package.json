@@ -14,7 +14,8 @@
     "bin",
     "lib",
     "themes",
-    "INSTALL.md"
+    "INSTALL.md",
+    "README_CN.md"
   ],
   "scripts": {
     "test": "node test/run.js",

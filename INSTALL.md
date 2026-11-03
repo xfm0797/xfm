@@ -250,7 +250,7 @@ export default {
 };
 ```
 
-所有字段都有默认值，最小配置就是一个空对象。完整字段见 README。
+所有字段都有默认值，最小配置就是一个空对象。完整字段见 `README_CN.md`（中文）/ `README.md`（English）。
 
 ---
 
