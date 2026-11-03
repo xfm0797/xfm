@@ -253,7 +253,7 @@ ${paint(C.bold, '命令')}
   info [目录]          查看站点配置
 
 ${paint(C.bold, '选项')}
-  --port=4000          dev 端口
+  --port=4173          dev 端口（默认 4173）
   --dev                build 时启用增量缓存
   --template=docs      create 时使用文档模板
   --draft              new 时生成草稿（默认直接可发布）

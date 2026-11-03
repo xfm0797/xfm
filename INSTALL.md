@@ -1,81 +1,83 @@
-# xfm 安装与使用说明
+# xfm — Installation & Usage
 
-> 面向 Node 22 环境，从零到跑起来大约 1 分钟。
-> 项目地址：`https://github.com/xfm0797/xfm`
+> Assumes a Node 22 environment. From zero to a running site takes about a minute.
+> Repository: `https://github.com/xfm0797/xfm`
+
+[English](./INSTALL.md) | [简体中文](./INSTALL_CN.md)
 
 ---
 
-## 一、先决条件
+## 1. Prerequisites
 
-| 项目 | 要求 | 检查命令 |
+| Item | Requirement | Check |
 | --- | --- | --- |
-| Node.js | **18 或更高**（推荐 22 LTS） | `node -v` |
-| npm | 随 Node 附带（推荐 ≥ 9） | `npm -v` |
+| Node.js | **18 or newer** (22 LTS recommended) | `node -v` |
+| npm | Ships with Node (>= 9 recommended) | `npm -v` |
 
 ```bash
-node -v    # 期望 v22.x
-npm -v     # 期望 10.x 或 11.x
+node -v    # expect v22.x
+npm -v     # expect 10.x or 11.x
 ```
 
-Node 版本过旧会报 `EBADENGINE`，用 [nvm](https://github.com/nvm-sh/nvm) 或 [fnm](https://github.com/Schniz/fnm) 切到 22 即可：
+An outdated Node version triggers `EBADENGINE`. Switch to 22 with [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm):
 
 ```bash
 nvm install 22 && nvm use 22
 ```
 
-xfm 是**零运行时依赖**的，安装时不会拉取任何第三方包，也因此不会出现依赖树冲突、`npm audit` 报警。
+xfm has **zero runtime dependencies**, so installing it pulls no third-party packages — which also means no dependency-tree conflicts and no `npm audit` warnings.
 
 ---
 
-## 二、安装（三种方式，按需选一种）
+## 2. Install (pick one of three methods)
 
-### 方式 A：全局安装 —— 和 Hexo 一样用 `xfm` 命令
+### Option A: Global install — use `xfm` like you use `hexo`
 
 ```bash
 npm install -g xfmpress
 ```
 
-验证：
+Verify:
 
 ```bash
 xfm --help
 ```
 
-看到 `⚡ xfm v0.1.0` 的版本横幅即安装成功。
+If you see the `⚡ xfm v0.1.0` banner, you are good to go.
 
-> **命名说明**：npm 包名是 **`xfmpress`**，命令是 **`xfm`**（`npm i -g xfmpress` 之后用 `xfm` 调用）。定位是 Static Site Generator（静态站点生成器），与同系列的 `hexo-theme-xfm` 共用品牌。项目早期叫 `bolt`，`bolt`/`bolt-ssg` 已被占用，`xmssg` 与 `xfm` 又分别被 npm 的"名字过于相似"校验拦下（撞 `xss`、以及 `xo`/`xml`/`htm` 等一批短包名），0.1.0 起定为 `xfmpress`。
+> **About the name**: the npm package is **`xfmpress`**, the command is **`xfm`** (`npm i -g xfmpress`, then call `xfm`). It is a Static Site Generator, sharing the `xfm` brand with the `hexo-theme-xfm` family. The project was originally called `bolt`; `bolt`/`bolt-ssg` were taken, and `xmssg` and `xfm` were both rejected by npm's "too similar to an existing package" check (against `xss`, then against `xo`/`xml`/`htm` and friends), so `xfmpress` has been the name since 0.1.0.
 
-**权限报错怎么办**（`EACCES: permission denied`）？有两种正规解法，不要用 `sudo npm i -g`：
+**Hit `EACCES: permission denied`?** There are two proper fixes; do not use `sudo npm i -g`:
 
 ```bash
-# 解法 1（推荐）：把全局前缀改到用户目录
+# Fix 1 (recommended): move the global prefix into your home directory
 npm config set prefix ~/.npm-global
-echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.zshrc   # bash 用户改成 ~/.bashrc
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.zshrc   # use ~/.bashrc for bash
 source ~/.zshrc
 
-# 解法 2：用 nvm 管理 Node（全局包天然在用户目录，无需额外配置）
+# Fix 2: manage Node with nvm (global packages already live in your home directory)
 ```
 
-### 方式 B：免安装运行 —— 只想先试试
+### Option B: Run without installing — just want to try it
 
 ```bash
 npx xfmpress --help
 npx xfmpress create my-blog --template=blog
 ```
 
-`npx` 会自动下载到临时缓存并执行，不在系统里留下全局命令。适合快速体验或 CI 里一次性构建。
+`npx` downloads into a temporary cache and runs from there, leaving no global command behind. Good for a quick look or a one-off build in CI.
 
-### 方式 C：项目内安装 —— 团队协作推荐
+### Option C: Install into a project — best for teams
 
-把 xfm 作为开发依赖写进项目，任何人 `npm install` 后即可获得**完全一致**的版本：
+Add xfm as a dev dependency so everyone gets the **exact same** version after `npm install`:
 
 ```bash
 mkdir my-blog && cd my-blog
 npm init -y
-npm i -D xfm
+npm i -D xfmpress
 ```
 
-然后在 `package.json` 里加脚本：
+Then add scripts to `package.json`:
 
 ```json
 {
@@ -88,201 +90,207 @@ npm i -D xfm
 }
 ```
 
-之后用 `npm run dev` / `npm run build` 即可；临时调用可用 `npx xfmpress info`。
+From then on use `npm run dev` / `npm run build`; for a one-off command use `npx xfmpress info`.
 
-> 方式 C 的缺点是不能在空目录里用 `xfm create` 生成脚手架（那时还没有 `node_modules`）。建议先用方式 A 或 B 生成站点，再进目录装成本地依赖。
+> The downside of Option C: you cannot run `xfm create` in an empty directory, because there is no `node_modules` yet. Scaffold the site with Option A or B first, then install it locally.
 
 ---
 
-## 三、快速上手
+## 3. Quick start
 
-### 1. 创建站点
+### 1. Create a site
 
 ```bash
 xfm create my-blog --template=blog
 cd my-blog
 ```
 
-可选模板：
+Available templates:
 
-| `--template` | 外观 | 适合 |
+| `--template` | Look | Good for |
 | --- | --- | --- |
-| `blog`（默认） | 博客：首页列表 + 文章页 + 右侧目录 | 个人博客、技术随笔 |
-| `docs` | 文档：左侧分组侧栏 + 正文 | 产品文档、知识库 |
+| `blog` (default) | Blog: post list on the home page, post pages, right-hand TOC | Personal blogs, tech notes |
+| `docs` | Documentation: grouped left sidebar + body | Product docs, knowledge bases |
 
-也能指定站名：
+You can also set the site title:
 
 ```bash
-xfm create my-blog --template=docs --title="我的知识库"
+xfm create my-blog --template=docs --title="My Knowledge Base"
 ```
 
-生成的结构：
+Generated structure:
 
 ```
 my-blog/
-├── xfm.config.mjs      # 站点配置（有合理默认值，可按需改）
-├── content/             # 所有 Markdown 源文件
+├── xfm.config.mjs      # site config (sensible defaults, edit as needed)
+├── content/            # all Markdown sources
 │   ├── index.md
 │   ├── about.md
 │   └── posts/
 │       └── hello-world.md
-├── plugins/             # 你自己的插件
-├── public/              # 原样拷贝到产物根目录的静态文件
+├── plugins/            # your own plugins
+├── public/             # static files copied verbatim to the output root
 └── README.md
 ```
 
-### 2. 本地开发
+### 2. Local development
 
 ```bash
 xfm dev
 ```
 
-打开 `http://127.0.0.1:4000/`。改 `content/` 里的 Markdown 或 `themes/` 里的模板，保存后浏览器**自动刷新**（SSE 推送，无需装浏览器插件）。
+Open `http://127.0.0.1:4173/`. Edit Markdown under `content/` or templates under `themes/`, save, and the browser **refreshes itself** (SSE push, no browser extension needed).
 
 ```bash
-xfm dev --port=5000     # 换端口
+xfm dev --port=5000     # different port
 ```
 
-### 3. 写文章
+### 3. Write a post
 
 ```bash
-xfm new "我的第一篇文章"
-# ✓ 已创建 content/posts/我的第一篇文章.md   （文件名由标题自动转为 slug）
+xfm new "My First Post"
+# ✓ created content/posts/my-first-post.md   (the title is slugified into the filename)
 ```
 
-带空格或多语言的标题会自动处理文件名：
+Titles with spaces or non-ASCII characters are handled automatically:
 
 ```bash
 xfm new "Hello, World!"                  # → content/posts/hello-world.md
-xfm new "部署笔记" --slug=deploy-notes    # → 手动指定文件名
-xfm new "关于" --dir=pages               # → 放到 content/pages/ 下
+xfm new "Deploy notes" --slug=deploy-notes   # → explicit filename
+xfm new "About" --dir=pages              # → under content/pages/
 ```
 
-> **注意**：`xfm new` 生成的文章**默认可发布**，`xfm build` 立刻就能看到。想先写半成品，用 `xfm new --draft`（会写入 `draft: true`），这类文章不会出现在生产构建里；要发布时把 `draft` 改成 `false` 或删掉该行即可。
+> **Note**: posts created by `xfm new` are **publishable by default** and show up on the next `xfm build`. To write a work in progress, use `xfm new --draft` (writes `draft: true`); such posts never appear in production builds. Set `draft` to `false` or delete the line when you are ready to publish.
 
-### 4. 生产构建
+### 4. Production build
 
 ```bash
 xfm build
 ```
 
-产物在 `dist/`，纯静态，扔到 Nginx / 对象存储 / Vercel / Netlify / GitHub Pages 都能跑。
+Output goes to `dist/`, fully static — drop it on Nginx, object storage, Vercel, Netlify or GitHub Pages.
 
 ```
-✓ 页面      5 个
-✓ 附加产物  4 个（sitemap / rss 等）
-✓ 输出目录  dist
-耗时 30 ms
+✓ pages        5
+✓ extra files  4 (sitemap / rss, etc.)
+✓ output       dist
+done in 30 ms
 ```
 
-重构建会走增量缓存，只重新渲染改动过的页面：
+Rebuilds use the incremental cache and only re-render changed pages:
 
 ```bash
-xfm build --dev     # 开发模式下也启用增量缓存
+xfm build --dev     # enable the incremental cache in dev mode too
 ```
 
-### 5. 其他命令
+### 5. Other commands
 
 ```bash
-xfm info        # 查看当前站点解析后的配置（主题、内容目录、插件、Node 版本）
-xfm clean       # 清空 dist/ 与增量缓存
-xfm --help      # 全部命令与选项
+xfm info        # show the resolved config (theme, content dir, plugins, Node version)
+xfm clean       # wipe dist/ and the incremental cache
+xfm --help      # every command and option
 ```
 
 ---
 
-## 四、写 Markdown
+## 4. Writing Markdown
 
-内容就是标准 Markdown，没有私有语法。常用增强：
+Content is plain Markdown — no proprietary syntax. Common extensions:
 
 ````markdown
 ---
-title: 文章标题
+title: Post title
 date: 2024-06-01
-tags: [性能, Node]
-description: 用于 SEO 与列表摘要
+tags: [performance, node]
+description: Used for SEO and list summaries
 layout: post.html
 draft: false
 ---
 
-## 二级标题会自动进右侧目录
+## H2 headings land in the right-hand TOC automatically
 
-普通段落支持 **加粗**、*斜体*、`行内代码`、~~删除线~~、[链接](/about/)。
+Normal paragraphs support **bold**, *italic*, `inline code`, ~~strikethrough~~, [links](/about/).
 
-| 语法 | 说明 |
+| Syntax | Notes |
 | --- | --- |
-| 表格 | 标准 GFM |
+| Tables | Standard GFM |
 
-- [x] 任务列表已支持
-- [ ] 未完成项
+- [x] Task lists work
+- [ ] Unfinished item
 
-::: tip 提示容器
-支持 `tip` / `info` / `warning` / `danger` 四种。
+::: tip Callout
+Four kinds: `tip` / `info` / `warning` / `danger`.
 :::
 
 ```js
-const ok = true; // 代码块自动语法高亮
+const ok = true; // code blocks are highlighted automatically
 ```
 ````
 
-代码高亮支持：`js / javascript / jsx / ts / tsx / java / c / cpp / csharp / go / rust / swift / kotlin / scala / php / python / bash / sh / json / yaml / html / xml / svg / vue / css / scss / markdown`，大小写与常见别名都能识别；未知语言降级为纯文本，不会报错。围栏可加标题：`` ```js app.js ``。
+Highlighting supports: `js / javascript / jsx / ts / tsx / java / c / cpp / csharp / go / rust / swift / kotlin / scala / php / python / bash / sh / json / yaml / html / xml / svg / vue / css / scss / markdown`, case-insensitive and alias-aware; unknown languages degrade to plain text instead of failing. Fences can carry a title: `` ```js app.js ``.
 
 ---
 
-## 五、配置
+## 5. Configuration
 
-`xfm.config.mjs` 是一个普通 ESM 模块，导出对象即可，改动后 dev 服务器会自动重启：
+`xfm.config.mjs` is a plain ESM module — export an object and you are done. The dev server picks up changes automatically:
 
 ```js
 export default {
-  title: '我的博客',
-  description: '记录技术与生活',
-  url: 'https://example.com',      // 用于 sitemap / rss 的绝对链接
-  theme: 'default',                // 内置主题：default | docs；也可填本地路径
+  site: {
+    title: 'My Blog',
+    description: 'Notes on tech and life',
+    url: 'https://example.com',    // absolute links for sitemap / rss
+    lang: 'en',
+    base: '/',
+    nav: [{ title: 'Home', url: '/' }],
+  },
   contentDir: 'content',
-  outputDir: 'dist',
+  outDir: 'dist',
+  theme: 'default',                // built-in: default | docs; or a local path
   plugins: [
     'sitemap',
     'rss',
-    './plugins/my-plugin.js',      // 本地插件
+    './plugins/my-plugin.js',      // local plugin
   ],
-  workers: 0,                      // 0 = 自动；渲染进程数
+  workers: 0,                      // 0 = auto; number of render workers
+  server: { port: 4173 },          // dev port
 };
 ```
 
-所有字段都有默认值，最小配置就是一个空对象。完整字段见 `README_CN.md`（中文）/ `README.md`（English）。
+Every field has a default, so the minimal config is an empty object. Full reference: `README.md` (English) / `README_CN.md` (Chinese).
 
 ---
 
-## 六、常见问题
+## 6. FAQ
 
 **`xfm: command not found`**
-全局 npm 的 `bin` 目录不在 `PATH` 里。执行 `npm bin -g`（旧版）或 `npm config get prefix`，把其下的 `bin` 加进 `PATH`。用 nvm 的话重开一个终端通常就能解决。
+The global npm `bin` directory is not on your `PATH`. Run `npm config get prefix` and add its `bin` subdirectory to `PATH`. With nvm, opening a fresh terminal usually fixes it.
 
-**安装时报 `EACCES: permission denied`**
-见「方式 A」里的全局前缀改法，不要用 `sudo`。
+**`EACCES: permission denied` during install**
+See the global-prefix fix under Option A. Do not use `sudo`.
 
-**`node -v` 低于 18**
-升级 Node 后重装：`npm i -g xfmpress --force`。
+**`node -v` is below 18**
+Upgrade Node, then reinstall: `npm i -g xfmpress --force`.
 
-**`xfm new` 建了文章但页面上没有**
-大概率是 `draft: true`。改成 `false` 后重新 `xfm build`。
+**`xfm new` created a post but it is not on the site**
+Most likely `draft: true`. Change it to `false` and run `xfm build` again.
 
-**Windows 下 `xfm` 提示不是内部或外部命令**
-用 Git Bash 或 PowerShell 重开终端；仍不行则检查 `%APPDATA%\npm` 是否在 `Path` 中。
+**On Windows, `xfm` is "not recognized as an internal or external command"**
+Reopen your terminal in Git Bash or PowerShell. If it still fails, check that `%APPDATA%\npm` is on your `Path`.
 
-**想升级**
+**Upgrading**
 ```bash
-npm i -g xfmpress@latest       # 全局
-npm i -D xfm@latest       # 项目内
+npm i -g xfmpress@latest       # global
+npm i -D xfmpress@latest       # in a project
 ```
 
 ---
 
-## 七、一键脚本（复制即用）
+## 7. One-liner (copy & paste)
 
 ```bash
-# 全局安装 + 创建博客 + 本地预览
+# install globally + scaffold a blog + start the dev server
 npm i -g xfmpress \
   && xfm create my-blog --template=blog \
   && cd my-blog \

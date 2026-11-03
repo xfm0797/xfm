@@ -2,6 +2,8 @@
 
 极致性能的 Node.js 静态站点生成器。**零运行时依赖**，不需要 `npm install` 就能直接运行。
 
+[English](./PROGRAM.md) | 简体中文
+
 ## 直接用（无需安装依赖）
 
 ```bash
@@ -9,7 +11,7 @@ cd xfm-0.1.0
 
 node bin/xfm.js --help               # 查看命令
 node bin/xfm.js build examples/blog  # 构建示例站点
-node bin/xfm.js dev examples/blog    # 本地预览（默认 http://127.0.0.1:4000/）
+node bin/xfm.js dev examples/blog    # 本地预览（默认 http://127.0.0.1:4173/）
 node test/run.js                     # 跑 72 项测试
 node bench/bench.js                  # 1000 页性能基准
 ```
@@ -49,8 +51,8 @@ xfm-0.1.0/
 ├── examples/blog/         可运行的示例站点
 ├── test/run.js            测试套件
 ├── bench/bench.js         性能基准
-├── INSTALL.md             完整安装与使用说明
-└── README.md / README_CN.md  项目文档（英文 / 中文）
+├── INSTALL.md / INSTALL_CN.md  安装与使用说明（英文 / 中文）
+└── README.md / README_CN.md    项目文档（英文 / 中文）
 ```
 
 ## 从零建一个站点
@@ -69,4 +71,4 @@ Node.js ≥ 18（推荐 22 LTS）。无任何第三方依赖。
 
 1000 篇文档冷构建约 0.40 秒（≈2300 页/秒），增量命中后渲染阶段约 1 ms。
 
-详细文档见 `INSTALL.md` 与 `README_CN.md`（英文版见 `README.md`）。
+详细文档见 `INSTALL_CN.md` 与 `README_CN.md`（英文版为 `INSTALL.md` / `README.md`）。

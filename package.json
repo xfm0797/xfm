@@ -15,7 +15,8 @@
     "lib",
     "themes",
     "INSTALL.md",
-    "README_CN.md"
+    "README_CN.md",
+    "INSTALL_CN.md"
   ],
   "scripts": {
     "test": "node test/run.js",

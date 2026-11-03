@@ -15,7 +15,7 @@ xfm build            # 生产构建
 
 > **包名 `xfmpress`，命令 `xfm`**（`npm i -g xfmpress` → 用 `xfm` 调用）。定位是 **Static Site Generator（静态站点生成器）**：把 Markdown 压成纯静态 HTML。
 > 与同系列的 [hexo-theme-xfm](https://github.com/xfm0797/hexo-theme-xfm) 共用 `xfm` 品牌。
-> 完整的三种安装方式、权限排错与 FAQ 见 **[INSTALL.md](./INSTALL.md)**。
+> 完整的三种安装方式、权限排错与 FAQ 见 **[INSTALL_CN.md](./INSTALL_CN.md)**。
 
 ## 性能
 
@@ -63,7 +63,7 @@ npm i -g xfmpress      # 全局安装，然后直接使用 xfm 命令（Node ≥
 ```
 
 > 包名是 `xfmpress`，命令是 `xfm`，装一次即可全局使用。
-> 完整的安装、权限排错与三种安装方式见 **[INSTALL.md](./INSTALL.md)**。
+> 完整的安装、权限排错与三种安装方式见 **[INSTALL_CN.md](./INSTALL_CN.md)**。
 
 ## 命令
 
@@ -91,7 +91,7 @@ export default {
   plugins: ['sitemap', 'rss'],       // 内置插件，也可写路径
   defaults: { layout: 'post.html' },
   workers: 0,                        // worker 并发数；0=自动按任务量标定
-  server: { port: 4321 },
+  server: { port: 4173 },
 };
 ```
 

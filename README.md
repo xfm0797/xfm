@@ -16,7 +16,7 @@ xfm build            # production build
 > **Package name `xfmpress`, command `xfm`** (`npm i -g xfmpress`, then call `xfm`).
 > This is a **static site generator**: it compresses Markdown into plain static HTML.
 > Shares the `xfm` brand with [hexo-theme-xfm](https://github.com/xfm0797/hexo-theme-xfm).
-> All three install methods, permission troubleshooting and the FAQ live in **[INSTALL.md](./INSTALL.md)** (Chinese).
+> All three install methods, permission troubleshooting and the FAQ live in **[INSTALL.md](./INSTALL.md)**.
 
 ## Performance
 
@@ -65,7 +65,7 @@ npm i -g xfmpress      # then use the xfm command (Node >= 18)
 ```
 
 > The package is `xfmpress`, the command is `xfm` — install once, use anywhere.
-> Full install guide, permission troubleshooting and three install methods: **[INSTALL.md](./INSTALL.md)** (Chinese).
+> Full install guide, permission troubleshooting and three install methods: **[INSTALL.md](./INSTALL.md)**.
 
 ## Commands
 
@@ -93,7 +93,7 @@ export default {
   plugins: ['sitemap', 'rss'],       // built-in names or paths
   defaults: { layout: 'post.html' },
   workers: 0,                        // worker count; 0 = auto-calibrated
-  server: { port: 4321 },
+  server: { port: 4173 },
 };
 ```
 

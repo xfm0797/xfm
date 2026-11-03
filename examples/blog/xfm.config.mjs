@@ -16,5 +16,5 @@ export default {
   defaults: {
     layout: 'post.html',
   },
-  server: { port: 4321 },
+  server: { port: 4173 },
 };
