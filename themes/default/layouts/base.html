@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}{% if page.url == '/' %}{{ site.title }}{% else %}{{ page.title }} · {{ site.title }}{% endif %}{% endblock %}</title>
+  <meta name="description" content="{{ page.description || site.description }}">
+  <link rel="stylesheet" href="{{ site.assets }}style.css">
+  {% if site.favicon %}<link rel="icon" href="{{ site.favicon }}">{% endif %}
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="/">{{ site.title }}</a>
+      <nav class="nav">
+        {% for item in site.nav %}<a href="{{ item.url }}"{% if page.url == item.url %} class="active"{% endif %}>{{ item.title }}</a>
+        {% endfor %}
+        <button class="theme-toggle" id="theme-toggle" aria-label="切换主题" title="切换深浅色">◐</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    {% block main %}{{ content }}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>{{ site.copyright || ('© ' + site.title) }}</p>
+      <p class="powered">由 <a href="https://github.com/xfm0797/xfm">xfm</a> 构建 · 纯静态 · 零 JS 依赖</p>
+    </div>
+  </footer>
+  <script>
+    (function(){
+      var k='xfm-theme', r=document.documentElement;
+      var s=localStorage.getItem(k);
+      if(s) r.dataset.theme=s;
+      else if(window.matchMedia('(prefers-color-scheme: dark)').matches) r.dataset.theme='dark';
+      document.getElementById('theme-toggle').addEventListener('click',function(){
+        var n=r.dataset.theme==='dark'?'light':'dark';
+        r.dataset.theme=n; localStorage.setItem(k,n);
+      });
+    })();
+  </script>
+</body>
+</html>

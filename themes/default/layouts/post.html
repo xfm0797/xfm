@@ -1,0 +1,28 @@
+{% extend "base.html" %}
+{% block title %}{{ page.title }} · {{ site.title }}{% endblock %}
+{% block main %}
+<article class="post">
+  <header class="post-header">
+    <h1>{{ page.title }}</h1>
+    <div class="post-meta">
+      <time>{{ page.date }}</time>
+      {% for t in page.tags %}<a class="tag" href="/tags/{{ t }}/">{{ t }}</a>{% endfor %}
+      {% if page.readTime %}<span class="dim">{{ page.readTime }} 分钟阅读</span>{% endif %}
+    </div>
+  </header>
+
+  <div class="post-body">
+    {% if headings.length > 0 %}
+    <aside class="post-toc">
+      {% include "toc.html" %}
+    </aside>
+    {% endif %}
+    <div class="prose">{{ content | safe }}</div>
+  </div>
+
+  <footer class="post-footer">
+    {% if page.data.prev %}<a class="prev" href="{{ page.data.prev.url }}">← {{ page.data.prev.title }}</a>{% endif %}
+    {% if page.data.next %}<a class="next" href="{{ page.data.next.url }}">{{ page.data.next.title }} →</a>{% endif %}
+  </footer>
+</article>
+{% endblock %}

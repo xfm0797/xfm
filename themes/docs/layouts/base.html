@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% if page.url == '/' %}{{ site.title }}{% else %}{{ page.title }} · {{ site.title }}{% endif %}</title>
+  <meta name="description" content="{{ page.description || site.description }}">
+  <link rel="stylesheet" href="{{ site.assets }}style.css">
+</head>
+<body class="docs">
+  <header class="site-header">
+    <div class="wrap-wide header-inner">
+      <a class="brand" href="/">{{ site.title }}</a>
+      <nav class="nav">{% for item in site.nav %}<a href="{{ item.url }}">{{ item.title }}</a>
+      {% endfor %}</nav>
+    </div>
+  </header>
+  <div class="wrap-wide docs-body">
+    <aside class="docs-nav">
+      {% for group in site.navGroups %}
+      <div class="nav-group">
+        <div class="nav-group-title">{{ group.title }}</div>
+        <ul>
+          {% for item in group.items %}<li><a href="{{ item.url }}"{% if page.url == item.url %} class="active"{% endif %}>{{ item.title }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </aside>
+    <main class="docs-main">
+      {% block main %}{{ content | safe }}{% endblock %}
+      <footer class="site-footer"><p>{{ site.copyright || ('© ' + site.title) }}</p><p class="powered">由 xfm 构建</p></footer>
+    </main>
+  </div>
+</body>
+</html>

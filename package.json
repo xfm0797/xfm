@@ -1,0 +1,50 @@
+{
+  "name": "xfmpress",
+  "version": "0.1.0",
+  "description": "Zero-dependency static site generator for Node.js — 极致性能、多线程渲染、主题与插件系统",
+  "bin": {
+    "xfm": "bin/xfm.js"
+  },
+  "main": "lib/index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "themes",
+    "INSTALL.md"
+  ],
+  "scripts": {
+    "test": "node test/run.js",
+    "bench": "node bench/bench.js",
+    "dev": "node bin/xfm.js dev examples/blog",
+    "build:example": "node bin/xfm.js build examples/blog",
+    "prepublishOnly": "node test/run.js"
+  },
+  "keywords": [
+    "static-site-generator",
+    "static-site",
+    "ssg",
+    "markdown",
+    "blog",
+    "docs",
+    "generator",
+    "cli",
+    "hexo",
+    "performance",
+    "zero-dependency",
+    "xfm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xfm0797/xfm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xfm0797/xfm/issues"
+  },
+  "homepage": "https://github.com/xfm0797/xfm#readme",
+  "author": "xfm0797",
+  "license": "MIT"
+}

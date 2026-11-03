@@ -1,0 +1,7 @@
+{% for post in site.posts %}<article class="card">
+  <a class="card-title" href="{{ post.url }}">{{ post.title }}</a>
+  <p class="card-desc">{{ post.description }}</p>
+  <div class="card-meta">{{ post.date }}{% if post.tags.length %} · {% for t in post.tags %}<span class="tag">{{ t }}</span>{% endfor %}{% endif %}{% if post.readTime %} · {{ post.readTime }} 分钟{% endif %}</div>
+</article>
+{% else %}<p class="empty">还没有文章，运行 <code>xfm new 我的第一篇文章</code> 开始写作。</p>
+{% endfor %}

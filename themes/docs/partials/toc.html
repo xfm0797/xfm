@@ -1,0 +1,9 @@
+{% if headings and headings.length %}
+<nav class="toc" aria-label="目录">
+  <div class="toc-title">本文目录</div>
+  <ul>
+    {% for h in headings %}<li class="toc-h{{ h.level }}"><a href="#{{ h.id }}">{{ h.text }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}

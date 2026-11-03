@@ -1,0 +1,29 @@
+{% extend "base.html" %}
+{% block main %}
+<section class="hero">
+  <h1>{{ site.title }}</h1>
+  {% if site.description %}<p class="lead">{{ site.description }}</p>{% endif %}
+</section>
+
+<section class="timeline">
+  {% include "post-list.html" %}
+</section>
+
+{% if site.tags and site.tags.length %}
+<section class="tag-cloud">
+  <h2>标签</h2>
+  <div class="tags">
+    {% for t in site.tags %}<a class="chip" href="{{ t.url }}">{{ t.name }}<span class="count">{{ t.count }}</span></a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="list">
+  <h2>全部页面</h2>
+  <ul class="page-list">
+    {% for p in site.pages %}<li><a href="{{ p.url }}">{{ p.title }}</a><span class="dim">{{ p.date }}</span></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

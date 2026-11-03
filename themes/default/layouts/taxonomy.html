@@ -1,0 +1,16 @@
+{% extend "base.html" %}
+{% block main %}
+<section class="hero small">
+  <h1>{{ page.title }}</h1>
+  <p class="lead">{{ page.description }}</p>
+</section>
+<section class="timeline">
+  {% for post in page.data.posts %}<article class="card">
+    <a class="card-title" href="{{ post.url }}">{{ post.title }}</a>
+    <p class="card-desc">{{ post.description }}</p>
+    <div class="card-meta">{{ post.date }}</div>
+  </article>
+  {% else %}<p class="empty">暂无内容</p>
+  {% endfor %}
+</section>
+{% endblock %}
