@@ -590,6 +590,58 @@ async function testBuild() {
     }
   });
 
+  await test('URL 中的百分号编码会还原成真实目录名', () => {
+    const { urlToFilePath } = require('../lib/engine/site');
+    assert.strictEqual(urlToFilePath('/tags/%E6%8F%92%E4%BB%B6/'), path.posix.join('tags', '插件', 'index.html'));
+    assert.strictEqual(urlToFilePath('/tags/Node.js/'), path.posix.join('tags', 'Node.js', 'index.html'));
+    // %2F 不能被还原成路径分隔符
+    assert(!urlToFilePath('/a%2Fb/').includes('a/b'), 'decodeURI 不应拆开编码后的斜杠');
+  });
+
+  await test('标签聚合页生成，中文标签落盘与链接一致', () => {
+    const taxTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-tax-'));
+    try {
+      execFileSync(process.execPath, [bin, 'create', taxTmp, '--template=blog', '--title=标签站', '--force'], { stdio: 'pipe' });
+      fs.writeFileSync(
+        path.join(taxTmp, 'content', 'posts', 'tagged.md'),
+        '---\ntitle: 带标签的文章\ndate: 2026-02-01\ntags: [中文 标签, 随笔]\n---\n\n正文\n'
+      );
+      execFileSync(process.execPath, [bin, 'build', taxTmp], { stdio: 'pipe' });
+
+      const zh = path.join(taxTmp, 'dist', 'tags', '中文 标签', 'index.html');
+      assert(fs.existsSync(zh), '中文标签目录没有落盘（可能被百分号编码了）');
+      const html = fs.readFileSync(zh, 'utf8');
+      assert(html.includes('<h1>中文 标签</h1>'), '聚合页标题不对');
+      assert(html.includes('带标签的文章'), '聚合页没有列出文章');
+      assert(html.includes('共 1 篇'), '缺少文章数描述');
+
+      // 同一标签下两篇文章
+      const fen = fs.readFileSync(path.join(taxTmp, 'dist', 'tags', '随笔', 'index.html'), 'utf8');
+      assert((fen.match(/card-title/g) || []).length === 2, '随笔标签应聚合 2 篇');
+    } finally {
+      fs.rmSync(taxTmp, { recursive: true, force: true });
+    }
+  });
+
+  await test('聚合页进 sitemap，不进 RSS 与首页页面列表', () => {
+    const taxTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-tax2-'));
+    try {
+      execFileSync(process.execPath, [bin, 'create', taxTmp, '--template=blog', '--title=索引站', '--force'], { stdio: 'pipe' });
+      execFileSync(process.execPath, [bin, 'build', taxTmp], { stdio: 'pipe' });
+      const read = (p) => fs.readFileSync(path.join(taxTmp, 'dist', p), 'utf8');
+
+      assert(read('sitemap.xml').includes('/tags/'), 'sitemap 缺少聚合页');
+      assert(!read('feed.xml').includes('/tags/'), 'RSS 不应包含聚合页');
+
+      // site.pages 只保留内容页：首页「全部页面」列表里不应出现聚合页
+      const home = read('index.html');
+      const list = home.slice(home.indexOf('page-list'));
+      assert(!list.includes('/tags/'), '「全部页面」列表混入了聚合页');
+    } finally {
+      fs.rmSync(taxTmp, { recursive: true, force: true });
+    }
+  });
+
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
