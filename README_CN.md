@@ -1,5 +1,11 @@
 # ⚡ xfm
 
+[![npm version](https://img.shields.io/npm/v/xfmpress?style=flat-square&color=4f46e5&label=npm)](https://www.npmjs.com/package/xfmpress)
+[![npm downloads](https://img.shields.io/npm/dm/xfmpress?style=flat-square)](https://www.npmjs.com/package/xfmpress)
+[![node](https://img.shields.io/node/v/xfmpress?style=flat-square)](https://nodejs.org)
+[![license](https://img.shields.io/npm/l/xfmpress?style=flat-square)](./LICENSE)
+[![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen?style=flat-square)](package.json)
+
 **A zero-dependency static site generator for Node.js.** 极致性能的静态站点生成器 —— 零运行时依赖、多线程渲染、Nunjucks 风格模板、即插即用的主题与插件。
 
 [English](./README.md) | 简体中文
@@ -73,9 +79,9 @@ npm i -g xfmpress      # 全局安装，然后直接使用 xfm 命令（Node ≥
 
 | 命令 | 说明 |
 | --- | --- |
-| `xfm create [目录]` | 创建站点（`--template=blog\|docs`，`--title=`） |
-| `xfm dev [目录]` | 开发服务器（`--port=`） |
-| `xfm build [目录]` | 生产构建（`--dev` 启用增量缓存） |
+| `xfm create [目录]` | 创建站点（`--template=blog\|docs`，`--title=`），别名 `xfm init` |
+| `xfm dev [目录]` | 开发服务器（`--port=`），别名 `serve` / `server` / `preview` |
+| `xfm build [目录]` | 生产构建（`--dev` 启用增量缓存），别名 `generate` / `gen` |
 | `xfm new "标题"` | 新建文章（`--dir=posts --slug=xxx --draft --force`，同名自动追加编号） |
 | `xfm clean` / `xfm info` | 清理产物 / 查看配置 |
 
@@ -185,13 +191,13 @@ xfm/
 ├── themes/docs/        # 文档主题（侧栏导航）
 ├── examples/blog/      # 可构建的示例站点
 ├── bench/bench.js      # 基准测试（分阶段耗时）
-└── test/run.js         # 85 项测试（零依赖）
+└── test/run.js         # 88 项测试（零依赖）
 ```
 
 ## 本地开发
 
 ```bash
-npm run test           # 85 项测试
+npm run test           # 88 项测试
 npm run bench          # 1000 页基准（分阶段耗时）
 npm run build:example  # 构建示例站点
 npm run dev            # 开发示例站点

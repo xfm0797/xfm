@@ -1,5 +1,11 @@
 # ⚡ xfm
 
+[![npm version](https://img.shields.io/npm/v/xfmpress?style=flat-square&color=4f46e5&label=npm)](https://www.npmjs.com/package/xfmpress)
+[![npm downloads](https://img.shields.io/npm/dm/xfmpress?style=flat-square)](https://www.npmjs.com/package/xfmpress)
+[![node](https://img.shields.io/node/v/xfmpress?style=flat-square)](https://nodejs.org)
+[![license](https://img.shields.io/npm/l/xfmpress?style=flat-square)](./LICENSE)
+[![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen?style=flat-square)](package.json)
+
 **A zero-dependency static site generator for Node.js.** Zero runtime dependencies, multi-threaded rendering, Nunjucks-style templates, drop-in themes and plugins.
 
 [English](./README.md) | [简体中文](./README_CN.md)
@@ -75,9 +81,9 @@ npm i -g xfmpress      # then use the xfm command (Node >= 18)
 
 | Command | Description |
 | --- | --- |
-| `xfm create [dir]` | Scaffold a site (`--template=blog\|docs`, `--title=`) |
-| `xfm dev [dir]` | Dev server (`--port=`) |
-| `xfm build [dir]` | Production build (`--dev` enables incremental cache) |
+| `xfm create [dir]` | Scaffold a site (`--template=blog\|docs`, `--title=`). Alias: `xfm init` |
+| `xfm dev [dir]` | Dev server (`--port=`). Aliases: `serve`, `server`, `preview` |
+| `xfm build [dir]` | Production build (`--dev` enables incremental cache). Aliases: `generate`, `gen` |
 | `xfm new "Title"` | New post (`--dir=posts --slug=xxx --draft --force`; duplicate titles auto-number) |
 | `xfm clean` / `xfm info` | Clean output / show config |
 
@@ -187,13 +193,13 @@ xfm/
 ├── themes/docs/        # docs theme (sidebar navigation)
 ├── examples/blog/      # buildable example site
 ├── bench/bench.js      # benchmark (per-stage timings)
-└── test/run.js         # 85 tests (zero dependencies)
+└── test/run.js         # 88 tests (zero dependencies)
 ```
 
 ## Local development
 
 ```bash
-npm run test           # 85 tests
+npm run test           # 88 tests
 npm run bench          # 1,000-page benchmark (per-stage timings)
 npm run build:example  # build the example site
 npm run dev            # dev-server the example site

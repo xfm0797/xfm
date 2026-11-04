@@ -1,4 +1,4 @@
-# xfm v0.2.0 —— 源码包
+# xfm v0.2.1 —— 源码包
 
 极致性能的 Node.js 静态站点生成器。**零运行时依赖**，不需要 `npm install` 就能直接运行。
 
@@ -7,12 +7,12 @@
 ## 直接用（无需安装依赖）
 
 ```bash
-cd xfm-0.2.0
+cd xfm-0.2.1
 
 node bin/xfm.js --help               # 查看命令
 node bin/xfm.js build examples/blog  # 构建示例站点
 node bin/xfm.js dev examples/blog    # 本地预览（默认 http://127.0.0.1:4173/）
-node test/run.js                     # 跑 85 项测试
+node test/run.js                     # 跑 88 项测试
 node bench/bench.js                  # 1000 页性能基准
 ```
 
@@ -28,7 +28,7 @@ xfm --help
 ## 目录结构
 
 ```
-xfm-0.2.0/
+xfm-0.2.1/
 ├── bin/xfm.js            CLI 入口（build / dev / new / create / clean / info）
 ├── lib/
 │   ├── index.js           编程式 API（build / createSite）
