@@ -25,4 +25,5 @@
     {% if page.data.next %}<a class="next" href="{{ page.data.next.url }}">{{ page.data.next.title }} →</a>{% endif %}
   </footer>
 </article>
+{% if headings.length > 0 %}<script src="{{ site.assets }}toc.js" defer></script>{% endif %}
 {% endblock %}

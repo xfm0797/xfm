@@ -491,6 +491,34 @@ async function testBuild() {
     assert(html.includes('/assets/style.css'), '缺少样式引用');
   });
 
+  await test('目录滚动高亮脚本随文章页下发', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-toc-'));
+    try {
+      execFileSync(process.execPath, [bin, 'create', dir, '--template=blog', '--force'], { stdio: 'pipe' });
+      fs.writeFileSync(
+        path.join(dir, 'content', 'posts', 'toc-demo.md'),
+        '---\ntitle: 目录演示\ndate: 2026-01-01\n---\n\n## 第一节\n\n正文\n\n### 小节\n\n正文\n\n## 第二节\n\n正文\n'
+      );
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+
+      assert(fs.existsSync(path.join(dir, 'dist', 'assets', 'toc.js')), 'toc.js 没被复制到 dist/assets');
+
+      const html = fs.readFileSync(path.join(dir, 'dist', 'posts', 'toc-demo', 'index.html'), 'utf8');
+      assert(html.includes('<script src="/assets/toc.js" defer></script>'), '文章页没有引入 toc.js');
+      assert(html.includes('href="#第一节"'), '目录锚点与标题 id 不一致');
+      assert(html.includes('class="toc-h3"'), '缺少三级标题缩进');
+
+      // 无标题的页面不白拉一次请求
+      const page = fs.readFileSync(path.join(dir, 'dist', 'about', 'index.html'), 'utf8');
+      assert(!page.includes('toc.js'), '没有目录的页面也引入了 toc.js');
+
+      const css = fs.readFileSync(path.join(dir, 'dist', 'assets', 'style.css'), 'utf8');
+      assert(css.includes('.toc li a.is-active'), '缺少当前项高亮样式');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   await test('首页 title 拼上站点名', () => {
     const home = fs.readFileSync(path.join(tmp, 'dist', 'index.html'), 'utf8');
     const m = /<title>([^<]*)<\/title>/.exec(home);
