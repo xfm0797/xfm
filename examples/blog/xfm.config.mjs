@@ -5,6 +5,9 @@ export default {
     lang: 'zh-CN',
     author: 'XFM',
     base: '/',
+    // 部署域名：本地构建留空（产物用相对地址），CI 里由 SITE_URL 注入绝对地址，
+    // sitemap / rss 需要它才能输出合法的 <loc>https://…</loc>
+    url: process.env.SITE_URL || '',
     copyright: '© 2026 XFM Notes · 保留所有权利',
     nav: [
       { title: '文章', url: '/' },
