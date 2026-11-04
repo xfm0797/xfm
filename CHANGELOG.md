@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-11-04
+
+### Added
+
+- Command aliases matching Hexo muscle memory: `init` → `create`,
+  `generate` / `gen` → `build`, `serve` / `server` / `preview` → `dev`.
+- Unknown commands now suggest the closest match (`xfm buils` →
+  "did you mean `xfm build`?") instead of reprinting the whole help text.
+- npm / Node / license / zero-dependency badges in both READMEs.
+
+### Fixed
+
+- `xfm constructor` (or any `Object.prototype` key) was resolved as a command
+  and invoked the prototype method; command lookup now uses own properties.
+- Leading-dash input such as `xfm --port=4173` is reported as an unknown
+  *option* with a usage hint, rather than dumping the command list.
+
 ## [0.2.0] - 2026-11-04
 
 ### Added
@@ -75,6 +92,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Dev server with SSE live reload and configuration hot reload.
 - `xfm new`, `xfm build`, `xfm dev`, `xfm clean` commands.
 
+[0.2.1]: https://github.com/xfm0797/xfm/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/xfm0797/xfm/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/xfm0797/xfm/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/xfm0797/xfm/releases/tag/v0.1.0
