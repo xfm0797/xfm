@@ -63,6 +63,10 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          # 首次运行时仓库还没开 Pages，试着用工作流令牌自动启用；
+          # 若仓库策略不允许，去 Settings → Pages 把 Source 选为 GitHub Actions
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
