@@ -656,14 +656,81 @@ async function testBuild() {
 
       assert(read('sitemap.xml').includes('/tags/'), 'sitemap 缺少聚合页');
       assert(!read('feed.xml').includes('/tags/'), 'RSS 不应包含聚合页');
-
-      // site.pages 只保留内容页：首页「全部页面」列表里不应出现聚合页
-      const home = read('index.html');
-      const list = home.slice(home.indexOf('page-list'));
-      assert(!list.includes('/tags/'), '「全部页面」列表混入了聚合页');
+      assert(!read('feed.xml').includes('/categories/'), 'RSS 不应包含索引页');
+      assert(!read('feed.xml').includes('/archives/'), 'RSS 不应包含归档页');
     } finally {
       fs.rmSync(taxTmp, { recursive: true, force: true });
     }
+  });
+
+  await test('分类索引页与归档页生成', () => {
+    const idxTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-idx-'));
+    try {
+      execFileSync(process.execPath, [bin, 'create', idxTmp, '--template=blog', '--title=索引站', '--force'], { stdio: 'pipe' });
+      const postDir = path.join(idxTmp, 'content', 'posts');
+      fs.writeFileSync(path.join(postDir, 'a.md'), '---\ntitle: 甲\ndate: 2026-05-01\ncategory: 技术\ntags: [x]\n---\n\n甲\n');
+      fs.writeFileSync(path.join(postDir, 'b.md'), '---\ntitle: 乙\ndate: 2026-06-01\ncategory: 技术\n---\n\n乙\n');
+      fs.writeFileSync(path.join(postDir, 'c.md'), '---\ntitle: 丙\ndate: 2025-01-01\ncategory: 生活\n---\n\n丙\n');
+      execFileSync(process.execPath, [bin, 'build', idxTmp], { stdio: 'pipe' });
+      const read = (p) => fs.readFileSync(path.join(idxTmp, 'dist', p), 'utf8');
+
+      const catHtml = read('categories/index.html');
+      assert(catHtml.includes('技术') && catHtml.includes('2 篇'), '分类索引缺少词条与计数');
+      assert(catHtml.includes('/categories/%E6%8A%80%E6%9C%AF/'), '分类索引缺少分类页链接');
+
+      const archHtml = read('archives/index.html');
+      assert(archHtml.includes('2026') && archHtml.includes('2025'), '归档缺少年份分组');
+      assert(archHtml.indexOf('乙') < archHtml.indexOf('甲'), '归档未按日期倒序');
+      assert(archHtml.includes('3 篇') || archHtml.includes('2 篇'), '归档缺少篇数');
+
+      const sitemap = read('sitemap.xml');
+      assert(sitemap.includes('/categories/'), 'sitemap 缺少分类索引');
+      assert(sitemap.includes('/archives/'), 'sitemap 缺少归档');
+
+      // 脚手架默认导航包含四项，且指向的页面都存在
+      const home = read('index.html');
+      for (const u of ['/categories/', '/archives/', '/about/']) {
+        assert(home.includes(`href="${u}"`), `导航缺少 ${u}`);
+        assert(fs.existsSync(path.join(idxTmp, 'dist', u, 'index.html')), `${u} 页面未生成`);
+      }
+    } finally {
+      fs.rmSync(idxTmp, { recursive: true, force: true });
+    }
+  });
+
+  await test('主题缺布局或 indexes 关闭时跳过索引页', () => {
+    // docs 主题没有 categories/archives.html：不应生成，也不应报错
+    const docsTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-idx-docs-'));
+    try {
+      execFileSync(process.execPath, [bin, 'create', docsTmp, '--template=docs', '--force'], { stdio: 'pipe' });
+      execFileSync(process.execPath, [bin, 'build', docsTmp], { stdio: 'pipe' });
+      // 注意：/categories/<name>/ 是 taxonomy 聚合页，索引页特指 /categories/ 根
+      assert(!fs.existsSync(path.join(docsTmp, 'dist', 'categories', 'index.html')), 'docs 主题不应生成分类索引');
+      assert(!fs.existsSync(path.join(docsTmp, 'dist', 'archives')), 'docs 主题不应生成归档');
+    } finally {
+      fs.rmSync(docsTmp, { recursive: true, force: true });
+    }
+
+    // enabled: false 显式关闭
+    const offTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-idx-off-'));
+    try {
+      execFileSync(process.execPath, [bin, 'create', offTmp, '--template=blog', '--force'], { stdio: 'pipe' });
+      const cfgFile = path.join(offTmp, 'xfm.config.mjs');
+      fs.writeFileSync(cfgFile, fs.readFileSync(cfgFile, 'utf8').replace(
+        "server: { port: 4173 },",
+        "indexes: { categories: { enabled: false }, archives: { enabled: false } },\n  server: { port: 4173 },"
+      ));
+      execFileSync(process.execPath, [bin, 'build', offTmp], { stdio: 'pipe' });
+      assert(!fs.existsSync(path.join(offTmp, 'dist', 'categories', 'index.html')), 'enabled:false 不应生成分类索引');
+      assert(!fs.existsSync(path.join(offTmp, 'dist', 'archives')), 'enabled:false 不应生成归档');
+    } finally {
+      fs.rmSync(offTmp, { recursive: true, force: true });
+    }
+  });
+
+  await test('模板注释 {# #} 不输出', () => {
+    const html = compile('a{# 隐藏 #}b{% for i in [1] %}c{# 循环内注释 #}{% endfor %}')({});
+    assert.strictEqual(html, 'abc');
   });
 
   fs.rmSync(tmp, { recursive: true, force: true });

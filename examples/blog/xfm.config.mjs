@@ -10,7 +10,9 @@ export default {
     url: process.env.SITE_URL || '',
     copyright: '© 2026 XFM Notes · 保留所有权利',
     nav: [
-      { title: '文章', url: '/' },
+      { title: '首页', url: '/' },
+      { title: '分类', url: '/categories/' },
+      { title: '归档', url: '/archives/' },
       { title: '关于', url: '/about/' },
     ],
   },

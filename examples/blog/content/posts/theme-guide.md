@@ -3,6 +3,7 @@ title: 主题开发指南：从 30 行模板开始
 date: 2026-10-20 14:30:00
 tags: [主题, 教程]
 description: 了解 XFM 的模板语法、继承机制与上下文对象，写出你自己的主题。
+category: 主题
 layout: post.html
 ---
 

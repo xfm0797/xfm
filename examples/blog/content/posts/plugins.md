@@ -3,6 +3,7 @@ title: 插件体系：20 行代码生成 sitemap
 date: 2026-10-12 10:00:00
 tags: [插件, Node.js]
 description: 用钩子机制扩展构建流程，从 sitemap 到全文搜索索引都可以做成插件。
+category: 工程
 layout: post.html
 ---
 

@@ -3,6 +3,7 @@ title: 用 Node.js 写一个极致性能的静态站点生成器
 date: 2026-10-28 09:00:00
 tags: [Node.js, 性能, 架构]
 description: 从 Markdown 解析到多线程渲染，拆解一个 1000 页站点 1 秒内构建完成的实现路径。
+category: 工程
 layout: post.html
 ---
 

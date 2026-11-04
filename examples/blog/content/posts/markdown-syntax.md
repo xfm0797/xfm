@@ -3,6 +3,7 @@ title: "Markdown 语法速查：引用式链接、脚注与更多"
 date: 2026-11-04 10:00:00
 tags: [markdown, 语法]
 description: 除了常见 GFM 语法，XFM 还支持引用式链接、脚注、Setext 标题与缩进代码块。
+category: 写作
 layout: post.html
 ---
 
