@@ -30,6 +30,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `scripts/pages-base.js`: temporary build-time prefixer for the root-absolute
   links produced today, so the example site works under a project page path.
   It should be removed once `site.base` is applied during URL generation.
+- Table of contents that follows the reading position: `assets/toc.js` marks
+  the section currently at the top of the viewport (sticky header height plus
+  a small breathing gap), forces the last entry when the page bottom is
+  reached, scrolls the entry back into view if the TOC itself overflows, and
+  is only requested by pages that actually have headings. Styled through
+  `.toc a.is-active` in both themes.
 
 ### Fixed
 
