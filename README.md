@@ -20,12 +20,13 @@ xfm build            # production build
 
 ## Performance
 
-Benchmark: 32-core machine, Node 22, 1,000 Chinese documents (~5 MB of HTML output). Reproduce with `npm run bench`.
+Benchmark: 4-core Windows machine, Node 22, 1,000 Chinese documents (~5 MB of HTML output). Reproduce with `npm run bench`.
 
 | Metric | Value |
 | --- | --- |
-| Full cold build | **≈0.38–0.42 s** (≈2,400–2,700 pages/s) |
+| Full cold build | **≈4.4–5.5 s** (≈180–230 pages/s) |
 | Render phase with warm cache | **1 ms** (1,001 pages) |
+| Render phase, 4 workers | **≈0.5 s** (1,000 pages) |
 | Dev hot rebuild of a single page | **2–7 ms** |
 | Runtime footprint | plain static HTML + CSS, **zero JavaScript** |
 
@@ -33,14 +34,17 @@ Per-stage timing (1,000 pages):
 
 | Stage | Time | How |
 | --- | --- | --- |
-| Scan & parse | ~128 ms | Parallel directory walk + parallel source reads; each file is read once |
-| Hashing | ~9 ms | Reuses the already-read source text, no second IO |
-| Render | ~91 ms | Worker pool reuses threads; site context is serialized once |
-| Write | ~132 ms | One `mkdir` per directory, two-phase parallel writes |
+| Scan & parse | ~690 ms | Parallel directory walk + parallel source reads; each file is read once |
+| Hashing | ~15 ms | Reuses the already-read source text, no second IO |
+| Render | ~510 ms | Worker pool reuses threads; site context is serialized once |
+| Write | ~3,800 ms | One `mkdir` per directory, two-phase parallel writes |
+
+Writing dominates on Windows/NTFS: 1,000 small files cost more than parsing and rendering combined,
+and that stage is bounded by filesystem metadata operations rather than by the generator.
 
 Four design decisions carry the performance:
 
-1. **Line-scanning Markdown engine**: advances line by line at block level plus a single inline regex pass, no AST. Ships CJK and English anchors, tables, task lists (with continuation lines and nesting), syntax highlighting and `::: callout` containers.
+1. **Line-scanning Markdown engine**: advances line by line at block level plus a single inline regex pass, no AST. Ships CJK and English anchors, tables, task lists (with continuation lines and nesting), reference links, footnotes, syntax highlighting and `::: callout` containers.
 2. **Templates compiled to functions**: Nunjucks-style syntax is compiled into plain JS functions at build time, so rendering is string concatenation; undefined variables resolve safely to `undefined`.
 3. **Worker pool**: threads and template compile caches are reused for the whole run, and the site context is serialized only once. Concurrency is calibrated by *minimum work per thread* — 2–4 threads measured fastest; forcing 8 is actually slower.
 4. **Incremental builds**: a page is reused from cache when `source hash + theme fingerprint` are unchanged.
@@ -74,7 +78,7 @@ npm i -g xfmpress      # then use the xfm command (Node >= 18)
 | `xfm create [dir]` | Scaffold a site (`--template=blog\|docs`, `--title=`) |
 | `xfm dev [dir]` | Dev server (`--port=`) |
 | `xfm build [dir]` | Production build (`--dev` enables incremental cache) |
-| `xfm new "Title"` | New post (`--dir=posts --slug=xxx --draft`) |
+| `xfm new "Title"` | New post (`--dir=posts --slug=xxx --draft --force`; duplicate titles auto-number) |
 | `xfm clean` / `xfm info` | Clean output / show config |
 
 ## Configuration (`xfm.config.mjs`)
@@ -122,6 +126,15 @@ Fence languages (aliases normalized, case-insensitive): `js / javascript / jsx /
 
 A fence can carry a title on its first line: \`\`\`js app.js (meta such as `{1,3-5}` is ignored).
 ```
+
+Beyond GFM, the engine also understands:
+
+- **Reference links** — `[text][id]`, shorthand `[id]`, resolved from a single `[id]: https://example.com "title"` definition (removed from the output).
+- **Footnotes** — `text[^1]` with `[^1]: the note`; numbered by first reference, with a back link per reference.
+- **Setext headings** — `Title` followed by `====` (h1) or `----` (h2).
+- **Indented code blocks** — four leading spaces or a tab, outside lists.
+- **Escapes** — `\*not italic\*`, `` \`not code\` ``.
+- **Loose lists** — indented *and* unindented (lazy) continuation lines stay in the same item; ordered lists keep their start number.
 
 In the `docs` theme, `group: Getting Started` plus `weight: 1` builds the sidebar navigation.
 
@@ -174,13 +187,13 @@ xfm/
 ├── themes/docs/        # docs theme (sidebar navigation)
 ├── examples/blog/      # buildable example site
 ├── bench/bench.js      # benchmark (per-stage timings)
-└── test/run.js         # 72 tests (zero dependencies)
+└── test/run.js         # 85 tests (zero dependencies)
 ```
 
 ## Local development
 
 ```bash
-npm run test           # 72 tests
+npm run test           # 85 tests
 npm run bench          # 1,000-page benchmark (per-stage timings)
 npm run build:example  # build the example site
 npm run dev            # dev-server the example site

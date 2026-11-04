@@ -43,7 +43,7 @@ Verify:
 xfm --help
 ```
 
-If you see the `⚡ xfm v0.1.0` banner, you are good to go.
+If you see the `⚡ xfm v0.2.0` banner, you are good to go.
 
 > **About the name**: the npm package is **`xfmpress`**, the command is **`xfm`** (`npm i -g xfmpress`, then call `xfm`). It is a Static Site Generator, sharing the `xfm` brand with the `hexo-theme-xfm` family. The project was originally called `bolt`; `bolt`/`bolt-ssg` were taken, and `xmssg` and `xfm` were both rejected by npm's "too similar to an existing package" check (against `xss`, then against `xo`/`xml`/`htm` and friends), so `xfmpress` has been the name since 0.1.0.
 
@@ -214,6 +214,11 @@ Normal paragraphs support **bold**, *italic*, `inline code`, ~~strikethrough~~, 
 | Syntax | Notes |
 | --- | --- |
 | Tables | Standard GFM |
+| Reference links | `[text][id]`, shorthand `[id]`, plus a `[id]: https://… "title"` definition |
+| Footnotes | `text[^1]` with `[^1]: the note` — numbered by first reference, multi-reference back links |
+| Setext headings | A paragraph line followed by `====` (h1) or `----` (h2) |
+| Indented code | Four leading spaces or a tab, outside of lists |
+| Escapes | `\*literal\*`, `` \`literal\` `` |
 
 - [x] Task lists work
 - [ ] Unfinished item
