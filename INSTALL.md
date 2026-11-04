@@ -43,7 +43,7 @@ Verify:
 xfm --help
 ```
 
-If you see the `⚡ xfm v0.2.1` banner, you are good to go.
+If you see the `⚡ xfm v0.2.2` banner, you are good to go.
 
 > **About the name**: the npm package is **`xfmpress`**, the command is **`xfm`** (`npm i -g xfmpress`, then call `xfm`). It is a Static Site Generator, sharing the `xfm` brand with the `hexo-theme-xfm` family. The project was originally called `bolt`; `bolt`/`bolt-ssg` were taken, and `xmssg` and `xfm` were both rejected by npm's "too similar to an existing package" check (against `xss`, then against `xo`/`xml`/`htm` and friends), so `xfmpress` has been the name since 0.1.0.
 

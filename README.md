@@ -63,7 +63,7 @@ Four design decisions carry the performance:
 
 - **Themes**: `{% extend %}` / `{% block %}` template inheritance, `{% include %}` partials, CSS-variable light/dark themes. Ships `default` (blog) and `docs` (sidebar documentation).
 - **Plugins**: five hooks (`extendContext` / `markdown` / `transformHtml` / `afterBuild` / `configureServer`); drop a file into `plugins/` and it loads itself. Ships sitemap, RSS and reading-stats.
-- **Content**: YAML front-matter, drafts, tag/category/series taxonomies, automatic prev/next, `weight` ordering, and relative `.md` links resolved automatically.
+- **Content**: YAML front-matter, drafts, tag/category/series taxonomies, automatic prev/next, `weight` ordering, and relative `.md` links resolved automatically. Every term gets a real page at `/tags/<name>/`, `/categories/<name>/` and `/series/<name>/`, with encoded URLs written out as readable directories.
 - **Developer experience**: `xfm dev` builds in memory with SSE hot reload (keeps your scroll position), hot-swaps CSS separately, and lists available routes on 404.
 - **Easy to migrate**: template syntax follows Nunjucks/Liquid conventions; config supports `.mjs/.js/.json`.
 
@@ -193,7 +193,7 @@ xfm/
 ├── themes/docs/        # docs theme (sidebar navigation)
 ├── examples/blog/      # buildable example site
 ├── bench/bench.js      # benchmark (per-stage timings)
-└── test/run.js         # 88 tests (zero dependencies)
+└── test/run.js         # 91 tests (zero dependencies)
 ```
 
 ## Deployment
@@ -207,7 +207,7 @@ This repository ships a ready-made GitHub Pages pipeline: `.github/workflows/pag
 ## Local development
 
 ```bash
-npm run test           # 88 tests
+npm run test           # 91 tests
 npm run bench          # 1,000-page benchmark (per-stage timings)
 npm run build:example  # build the example site
 npm run dev            # dev-server the example site

@@ -1,4 +1,4 @@
-# xfm v0.2.1 — source package
+# xfm v0.2.2 — source package
 
 An extremely fast static site generator for Node.js. **Zero runtime dependencies** — it runs straight from the source tree, no `npm install` required.
 
@@ -7,12 +7,12 @@ An extremely fast static site generator for Node.js. **Zero runtime dependencies
 ## Run it directly (no dependency install)
 
 ```bash
-cd xfm-0.2.1
+cd xfm-0.2.2
 
 node bin/xfm.js --help               # list commands
 node bin/xfm.js build examples/blog  # build the example site
 node bin/xfm.js dev examples/blog    # preview locally (http://127.0.0.1:4173/)
-node test/run.js                     # run the 88 tests
+node test/run.js                     # run the 91 tests
 node bench/bench.js                  # 1,000-page benchmark
 ```
 
@@ -28,7 +28,7 @@ Or reference it by path with `npm link` (handy while debugging).
 ## Directory layout
 
 ```
-xfm-0.2.1/
+xfm-0.2.2/
 ├── bin/xfm.js            CLI entry (build / dev / new / create / clean / info)
 ├── lib/
 │   ├── index.js           programmatic API (build / createSite)

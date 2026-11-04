@@ -4,16 +4,31 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.2] - 2026-11-04
 
 ### Added
 
+- Tag, category and series pages: every term now gets a real page at
+  `/tags/<name>/`, `/categories/<name>/` and `/series/<name>/`, rendered with
+  the theme's `taxonomy.html` layout and listing its posts newest first.
+  Previously the templates linked to those URLs but nothing generated them,
+  so every tag link on a post was a 404.
 - GitHub Pages workflow (`.github/workflows/pages.yml`): tests, builds
   `examples/blog` and deploys the artifact when the site, engine or themes
-  change.
+  change, with `SITE_URL` injected from the repository coordinates.
 - `scripts/pages-base.js`: temporary build-time prefixer for the root-absolute
   links produced today, so the example site works under a project page path.
   It should be removed once `site.base` is applied during URL generation.
+
+### Fixed
+
+- Percent-encoded URLs wrote percent-encoded directories
+  (`dist/tags/%E6%8F%92%E4%BB%B6/`), which no static server resolves because
+  they decode the request path first. Output paths are now decoded
+  (`dist/tags/插件/`), while URLs and `sitemap.xml` stay encoded.
+- `sitemap.xml` and `feed.xml` emitted relative `<loc>` values when
+  `site.url` was unset; the example site now reads `SITE_URL` from the
+  environment so CI builds produce absolute links.
 
 ## [0.2.1] - 2026-11-04
 
@@ -103,6 +118,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Dev server with SSE live reload and configuration hot reload.
 - `xfm new`, `xfm build`, `xfm dev`, `xfm clean` commands.
 
+[0.2.2]: https://github.com/xfm0797/xfm/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/xfm0797/xfm/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/xfm0797/xfm/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/xfm0797/xfm/compare/v0.1.0...v0.1.1
