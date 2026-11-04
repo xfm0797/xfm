@@ -196,6 +196,14 @@ xfm/
 └── test/run.js         # 88 tests (zero dependencies)
 ```
 
+## Deployment
+
+`xfm build` emits plain static files in `dist/` — Nginx, object storage, Vercel, Netlify and GitHub Pages all work without a runtime.
+
+This repository ships a ready-made GitHub Pages pipeline: `.github/workflows/pages.yml` runs the test suite, builds `examples/blog` and deploys the artifact on every push to `main` that touches the site, the engine or the themes. To turn it on, set **Settings → Pages → Build and deployment → Source** to **GitHub Actions** once.
+
+> **Project pages need a path prefix.** Page URLs are generated as root-absolute (`/posts/x/`), and `site.base` does not prefix them yet, so serving from `https://<user>.github.io/<repo>/` would 404 on CSS and internal links. The workflow runs `scripts/pages-base.js` to add that prefix at build time. Once `site.base` is honoured by URL generation, drop the step and set `base` in the config instead.
+
 ## Local development
 
 ```bash

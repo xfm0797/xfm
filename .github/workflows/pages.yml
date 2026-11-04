@@ -1,0 +1,76 @@
+name: Deploy example site
+
+# 把 examples/blog 构建后部署到 GitHub Pages。
+# 仓库是项目页（<user>.github.io/<repo>/），所以构建后调用 scripts/pages-base.js
+# 补子路径前缀——引擎尚未支持 site.base 前缀，这是临时步骤，详见脚本头部说明。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'examples/blog/**'
+      - 'lib/**'
+      - 'bin/**'
+      - 'themes/**'
+      - 'scripts/pages-base.js'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Pages 同一时间只允许一个部署；取消进行中的会留下半截产物，所以排队而不是打断
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 零依赖项目，不需要 npm ci
+      - name: Run tests
+        run: node test/run.js
+
+      - name: Build example site
+        run: node bin/xfm.js build examples/blog
+
+      - name: Prefix links for project Pages
+        env:
+          # 用户根站（<user>.github.io）时 base 应为 /，脚本会自动跳过
+          SITE_BASE: /${{ github.event.repository.name }}/
+        run: |
+          if [ "${{ github.event.repository.name }}" = "${{ github.repository_owner }}.github.io" ]; then
+            echo "用户根站，跳过前缀"
+          else
+            node scripts/pages-base.js examples/blog/dist "$SITE_BASE"
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: examples/blog/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -194,6 +194,14 @@ xfm/
 └── test/run.js         # 88 项测试（零依赖）
 ```
 
+## 部署
+
+`xfm build` 产出纯静态文件到 `dist/`，Nginx、对象存储、Vercel、Netlify、GitHub Pages 都能直接托管，不需要运行时。
+
+本仓库自带 GitHub Pages 流水线：`.github/workflows/pages.yml` 会在推送到 `main` 且改动涉及示例站、引擎或主题时，跑测试 → 构建 `examples/blog` → 部署产物。首次使用只需在 **Settings → Pages → Build and deployment → Source** 里选一次 **GitHub Actions**。
+
+> **项目页需要子路径前缀。** 站内 URL 目前生成为根绝对路径（`/posts/x/`），`site.base` 还没有作用到 URL 生成，所以从 `https://<user>.github.io/<repo>/` 访问时 CSS 和站内链接会 404。workflow 用 `scripts/pages-base.js` 在构建后补前缀；等 `site.base` 真正接入 URL 生成后，删掉这一步、直接在配置里写 `base` 即可。
+
 ## 本地开发
 
 ```bash
