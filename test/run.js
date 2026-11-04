@@ -437,6 +437,25 @@ async function testFrontMatter() {
     assert.strictEqual(cfg.site.title, 'XFM Notes');
     assert.strictEqual(cfg.theme, 'themes/default');
   });
+
+  await test('同一毫秒内改写 .mjs 配置也能读到新值', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-cfg-'));
+    const file = path.join(dir, 'xfm.config.mjs');
+    const realNow = Date.now;
+    // 把时钟钉死：只要实现用 Date.now() 做 cache-busting，两次 import 就会撞 URL 命中旧模块
+    Date.now = () => 1700000000000;
+    try {
+      fs.writeFileSync(file, "export default { site: { title: 'A' } };\n");
+      const a = await loadConfig(dir);
+      fs.writeFileSync(file, "export default { site: { title: 'B' } };\n");
+      const b = await loadConfig(dir);
+      assert.strictEqual(a.site.title, 'A');
+      assert.strictEqual(b.site.title, 'B', '配置被 ESM 模块缓存住了');
+    } finally {
+      Date.now = realNow;
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 }
 
 /* ---------------- 端到端构建 ---------------- */

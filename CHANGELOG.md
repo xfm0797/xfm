@@ -22,6 +22,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Dev-server config hot reload could keep serving the old config: `.mjs`
+  configs were imported with `?t=Date.now()`, so two saves in the same
+  millisecond produced the same URL and Node's ESM cache returned the stale
+  module. Cache-busting now uses a monotonically increasing counter.
 - Percent-encoded URLs wrote percent-encoded directories
   (`dist/tags/%E6%8F%92%E4%BB%B6/`), which no static server resolves because
   they decode the request path first. Output paths are now decoded

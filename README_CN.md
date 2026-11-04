@@ -191,7 +191,7 @@ xfm/
 ├── themes/docs/        # 文档主题（侧栏导航）
 ├── examples/blog/      # 可构建的示例站点
 ├── bench/bench.js      # 基准测试（分阶段耗时）
-└── test/run.js         # 91 项测试（零依赖）
+└── test/run.js         # 92 项测试（零依赖）
 ```
 
 ## 部署
@@ -205,7 +205,7 @@ xfm/
 ## 本地开发
 
 ```bash
-npm run test           # 91 项测试
+npm run test           # 92 项测试
 npm run bench          # 1000 页基准（分阶段耗时）
 npm run build:example  # 构建示例站点
 npm run dev            # 开发示例站点

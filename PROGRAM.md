@@ -12,7 +12,7 @@ cd xfm-0.2.2
 node bin/xfm.js --help               # list commands
 node bin/xfm.js build examples/blog  # build the example site
 node bin/xfm.js dev examples/blog    # preview locally (http://127.0.0.1:4173/)
-node test/run.js                     # run the 91 tests
+node test/run.js                     # run the 92 tests
 node bench/bench.js                  # 1,000-page benchmark
 ```
 

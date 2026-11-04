@@ -193,7 +193,7 @@ xfm/
 ├── themes/docs/        # docs theme (sidebar navigation)
 ├── examples/blog/      # buildable example site
 ├── bench/bench.js      # benchmark (per-stage timings)
-└── test/run.js         # 91 tests (zero dependencies)
+└── test/run.js         # 92 tests (zero dependencies)
 ```
 
 ## Deployment
@@ -207,7 +207,7 @@ This repository ships a ready-made GitHub Pages pipeline: `.github/workflows/pag
 ## Local development
 
 ```bash
-npm run test           # 91 tests
+npm run test           # 92 tests
 npm run bench          # 1,000-page benchmark (per-stage timings)
 npm run build:example  # build the example site
 npm run dev            # dev-server the example site

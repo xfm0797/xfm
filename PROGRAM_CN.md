@@ -12,7 +12,7 @@ cd xfm-0.2.2
 node bin/xfm.js --help               # 查看命令
 node bin/xfm.js build examples/blog  # 构建示例站点
 node bin/xfm.js dev examples/blog    # 本地预览（默认 http://127.0.0.1:4173/）
-node test/run.js                     # 跑 91 项测试
+node test/run.js                     # 跑 92 项测试
 node bench/bench.js                  # 1000 页性能基准
 ```
 
