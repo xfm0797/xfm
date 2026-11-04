@@ -4,10 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.2] - 2026-11-04
+## [0.3.0] - 2026-11-04
 
 ### Added
 
+- Category index and archive pages: the default theme's navigation now ships
+  with 首页 / 分类 / 归档 / 关于, and the engine generates `/categories/`
+  (term cards with post counts) and `/archives/` (posts grouped by year) from
+  a new `indexes` config block. Pages are only generated when the theme
+  provides the matching layout, so custom themes keep working, and
+  `indexes.categories.enabled: false` turns them off. Index pages go into
+  `sitemap.xml` but not RSS, nav groups or prev/next.
+- Redesigned default theme: calm jade-green palette, two-column card grid on
+  the home page with a sticky widget sidebar (site intro, categories, tags,
+  archive link), refreshed header navigation with pill highlight, category
+  chips on post cards, and responsive breakpoints down to mobile widths.
 - Tag, category and series pages: every term now gets a real page at
   `/tags/<name>/`, `/categories/<name>/` and `/series/<name>/`, rendered with
   the theme's `taxonomy.html` layout and listing its posts newest first.
@@ -122,7 +133,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Dev server with SSE live reload and configuration hot reload.
 - `xfm new`, `xfm build`, `xfm dev`, `xfm clean` commands.
 
-[0.2.2]: https://github.com/xfm0797/xfm/compare/v0.2.1...v0.2.2
+[0.3.0]: https://github.com/xfm0797/xfm/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/xfm0797/xfm/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/xfm0797/xfm/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/xfm0797/xfm/compare/v0.1.0...v0.1.1

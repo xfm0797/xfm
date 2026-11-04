@@ -61,9 +61,9 @@ Four design decisions carry the performance:
 
 ## Features
 
-- **Themes**: `{% extend %}` / `{% block %}` template inheritance, `{% include %}` partials, CSS-variable light/dark themes. Ships `default` (blog) and `docs` (sidebar documentation).
+- **Themes**: `{% extend %}` / `{% block %}` template inheritance, `{% include %}` partials, `{# comments #}`, CSS-variable light/dark themes. Ships `default` (blog) and `docs` (sidebar documentation).
 - **Plugins**: five hooks (`extendContext` / `markdown` / `transformHtml` / `afterBuild` / `configureServer`); drop a file into `plugins/` and it loads itself. Ships sitemap, RSS and reading-stats.
-- **Content**: YAML front-matter, drafts, tag/category/series taxonomies, automatic prev/next, `weight` ordering, and relative `.md` links resolved automatically. Every term gets a real page at `/tags/<name>/`, `/categories/<name>/` and `/series/<name>/`, with encoded URLs written out as readable directories.
+- **Content**: YAML front-matter, drafts, tag/category/series taxonomies, automatic prev/next, `weight` ordering, and relative `.md` links resolved automatically. Every term gets a real page at `/tags/<name>/`, `/categories/<name>/` and `/series/<name>/`, with encoded URLs written out as readable directories. The default theme also ships a category index (`/categories/`) and a year-grouped archive (`/archives/`), driven by the `indexes` config block and generated only when the theme provides the layout.
 - **Developer experience**: `xfm dev` builds in memory with SSE hot reload (keeps your scroll position), hot-swaps CSS separately, and lists available routes on 404.
 - **Easy to migrate**: template syntax follows Nunjucks/Liquid conventions; config supports `.mjs/.js/.json`.
 
@@ -102,6 +102,10 @@ export default {
   theme: 'default',                  // theme name or path
   plugins: ['sitemap', 'rss'],       // built-in names or paths
   defaults: { layout: 'post.html' },
+  indexes: {                         // category index / archive pages
+    categories: { enabled: true, url: '/categories/' },
+    archives: { enabled: true, url: '/archives/' },
+  },                                 // generated only if the theme has the layout
   workers: 0,                        // worker count; 0 = auto-calibrated
   server: { port: 4173 },
 };
@@ -179,7 +183,7 @@ themes/my-theme/
 └── assets/         # style.css and friends, copied to /assets/ on build
 ```
 
-Template context: `site.*` (site config and aggregated data), `page.*` (current page metadata), `content` (body HTML), `headings` (table of contents).
+Template context: `site.*` (site config and aggregated data), `page.*` (current page metadata), `content` (body HTML), `headings` (table of contents). Optional layouts `taxonomy.html`, `categories.html` and `archives.html` opt a theme into taxonomy, category-index and archive pages — if a layout is missing, the corresponding pages are simply not generated.
 
 ## Project layout
 
@@ -193,7 +197,7 @@ xfm/
 ├── themes/docs/        # docs theme (sidebar navigation)
 ├── examples/blog/      # buildable example site
 ├── bench/bench.js      # benchmark (per-stage timings)
-└── test/run.js         # 92 tests (zero dependencies)
+└── test/run.js         # 95 tests (zero dependencies)
 ```
 
 ## Deployment
@@ -207,7 +211,7 @@ This repository ships a ready-made GitHub Pages pipeline: `.github/workflows/pag
 ## Local development
 
 ```bash
-npm run test           # 92 tests
+npm run test           # 95 tests
 npm run bench          # 1,000-page benchmark (per-stage timings)
 npm run build:example  # build the example site
 npm run dev            # dev-server the example site

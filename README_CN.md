@@ -59,9 +59,9 @@ xfm build            # 生产构建
 
 ## 特性
 
-- **主题**：`{% extend %}` / `{% block %}` 模板继承、`{% include %}` 片段、CSS 变量深浅色主题；内置 `default`（博客）与 `docs`（侧栏文档）两套主题。
+- **主题**：`{% extend %}` / `{% block %}` 模板继承、`{% include %}` 片段、`{# 注释 #}`、CSS 变量深浅色主题；内置 `default`（博客）与 `docs`（侧栏文档）两套主题。
 - **插件**：五个钩子（`extendContext` / `markdown` / `transformHtml` / `afterBuild` / `configureServer`），放进 `plugins/` 目录自动加载；内置 sitemap、RSS、阅读统计三个插件。
-- **内容**：YAML front-matter、草稿、标签/分类/系列聚合、自动 prev/next、按 weight 排序、`.md` 相对链接自动解析。每个标签/分类/系列都会生成独立页面（`/tags/<name>/`、`/categories/<name>/`、`/series/<name>/`），URL 编码的路径会还原成可读的目录名。
+- **内容**：YAML front-matter、草稿、标签/分类/系列聚合、自动 prev/next、按 weight 排序、`.md` 相对链接自动解析。每个标签/分类/系列都会生成独立页面（`/tags/<name>/`、`/categories/<name>/`、`/series/<name>/`），URL 编码的路径会还原成可读的目录名。默认主题还带分类索引页（`/categories/`）与按年归档页（`/archives/`），由 `indexes` 配置项驱动，主题提供对应布局时才会生成。
 - **开发体验**：`xfm dev` 内存构建 + SSE 热更新（保持滚动位置）、CSS 单独热替换、404 页列出可用路由。
 - **易迁移**：模板语法兼容 Nunjucks/Liquid 习惯，配置文件支持 `.mjs/.js/.json`。
 
@@ -100,6 +100,10 @@ export default {
   theme: 'default',                  // 主题名或路径
   plugins: ['sitemap', 'rss'],       // 内置插件，也可写路径
   defaults: { layout: 'post.html' },
+  indexes: {                         // 分类索引页 / 归档页
+    categories: { enabled: true, url: '/categories/' },
+    archives: { enabled: true, url: '/archives/' },
+  },                                 // 主题提供对应布局时才会生成
   workers: 0,                        // worker 并发数；0=自动按任务量标定
   server: { port: 4173 },
 };
@@ -177,7 +181,7 @@ themes/my-theme/
 └── assets/         # style.css 等，构建时复制到站点 /assets/
 ```
 
-模板上下文：`site.*`（站点配置与聚合数据）、`page.*`（当前页元数据）、`content`（正文 HTML）、`headings`（目录）。
+模板上下文：`site.*`（站点配置与聚合数据）、`page.*`（当前页元数据）、`content`（正文 HTML）、`headings`（目录）。可选布局 `taxonomy.html`、`categories.html`、`archives.html` 让主题获得标签聚合页、分类索引页与归档页——缺哪个布局就少生成哪类页面，不会报错。
 
 ## 目录
 
@@ -191,7 +195,7 @@ xfm/
 ├── themes/docs/        # 文档主题（侧栏导航）
 ├── examples/blog/      # 可构建的示例站点
 ├── bench/bench.js      # 基准测试（分阶段耗时）
-└── test/run.js         # 92 项测试（零依赖）
+└── test/run.js         # 95 项测试（零依赖）
 ```
 
 ## 部署
@@ -205,7 +209,7 @@ xfm/
 ## 本地开发
 
 ```bash
-npm run test           # 92 项测试
+npm run test           # 95 项测试
 npm run bench          # 1000 页基准（分阶段耗时）
 npm run build:example  # 构建示例站点
 npm run dev            # 开发示例站点

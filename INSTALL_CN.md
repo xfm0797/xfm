@@ -43,7 +43,7 @@ npm install -g xfmpress
 xfm --help
 ```
 
-看到 `⚡ xfm v0.2.2` 的版本横幅即安装成功。
+看到 `⚡ xfm v0.3.0` 的版本横幅即安装成功。
 
 > **命名说明**：npm 包名是 **`xfmpress`**，命令是 **`xfm`**（`npm i -g xfmpress` 之后用 `xfm` 调用）。定位是 Static Site Generator（静态站点生成器），与同系列的 `hexo-theme-xfm` 共用品牌。项目早期叫 `bolt`，`bolt`/`bolt-ssg` 已被占用，`xmssg` 与 `xfm` 又分别被 npm 的"名字过于相似"校验拦下（撞 `xss`、以及 `xo`/`xml`/`htm` 等一批短包名），0.1.0 起定为 `xfmpress`。
 
