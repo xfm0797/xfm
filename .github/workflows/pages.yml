@@ -12,6 +12,7 @@ on:
       - 'lib/**'
       - 'bin/**'
       - 'themes/**'
+      - 'test/**'
       - 'scripts/pages-base.js'
       - '.github/workflows/pages.yml'
   workflow_dispatch:

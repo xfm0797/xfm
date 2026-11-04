@@ -26,6 +26,11 @@ function test(name, fn) {
       failed++;
       failures.push({ name, e });
       process.stdout.write(`  ${'\x1b[31m'}✗${'\x1b[0m'} ${name}\n      ${e.message.split('\n')[0]}\n`);
+      // CI 里同时输出 annotation，失败原因直接出现在 Actions 摘要与 API 上
+      if (process.env.GITHUB_ACTIONS) {
+        const msg = String(e.message).split('\n')[0].replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+        process.stdout.write(`::error file=test/run.js,title=${name}::${msg}\n`);
+      }
     });
 }
 
