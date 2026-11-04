@@ -171,6 +171,85 @@ async function testMarkdown() {
     assert(renderMarkdown('---').includes('<hr>'));
   });
 
+  await test('引用式链接与图片', () => {
+    const html = renderMarkdown('[官网][home] [home] ![logo][img]\n\n[home]: https://example.com "Example"\n[IMG]: /logo.png');
+    assert.strictEqual((html.match(/<a href="https:\/\/example.com"/g) || []).length, 2, html);
+    assert(html.includes('title="Example"'), html);
+    assert(html.includes('<img src="/logo.png" alt="logo"'), html);
+    assert(!html.includes('[home]:'), '定义行不应输出到正文');
+    assert(!html.includes('[home]'), '简写引用未解析');
+  });
+
+  await test('未定义引用保持原样，代码内不解析', () => {
+    const html = renderMarkdown('[未定义] 和 `[未定义]`\n\n```md\n[x][y]\n```');
+    assert(html.includes('[未定义] 和'), html);
+    assert(html.includes('<code>[未定义]</code>'), html);
+    assert(html.includes('[x][y]'), html);
+  });
+
+  await test('脚注编号、多次引用与回链', () => {
+    const html = renderMarkdown('正文[^a] 再引用[^a] 和[^b]，未知[^zz]\n\n[^a]: 甲\n[^b]: 乙');
+    assert(html.includes('id="fnref-a"'), html);
+    assert(html.includes('id="fnref-a-2"'), html);
+    assert.strictEqual((html.match(/class="footnote-ref"/g) || []).length, 3, html);
+    assert(html.includes('<li id="fn-b">'), html);
+    assert(html.includes('[^zz]'), '未定义脚注应保持原样');
+    assert(!html.includes('[^a]:'), '脚注定义不应输出');
+    assert(html.indexOf('甲') < html.indexOf('乙'), '脚注应按首次引用顺序排列');
+  });
+
+  await test('Setext 标题', () => {
+    const html = renderMarkdown('一级\n===\n\n二级\n---');
+    assert(html.includes('<h1 id="一级">'), html);
+    assert(html.includes('<h2 id="二级">'), html);
+  });
+
+  await test('缩进代码块', () => {
+    const html = renderMarkdown('    const a = 1;\n    <b>');
+    assert(html.includes('<pre class="language-text">'), html);
+    assert(html.includes('&lt;b&gt;'), html);
+    assert(!html.includes('<b>'), '缩进代码块内容不应被当成 HTML');
+  });
+
+  await test('列表惰性续行', () => {
+    const html = renderMarkdown('- 第一项\n无缩进续行\n- 第二项');
+    assert(html.includes('<li>第一项 无缩进续行</li>'), html);
+    assert.strictEqual((html.match(/<li>/g) || []).length, 2, html);
+  });
+
+  await test('有序列表起始编号', () => {
+    assert(renderMarkdown('3. 三\n4. 四').includes('<ol start="3">'));
+    assert(renderMarkdown('1. 一').includes('<ol>'));
+  });
+
+  await test('反斜杠转义', () => {
+    const html = renderMarkdown('\\*不是斜体\\* \\`不是代码\\`');
+    assert(html.includes('*不是斜体*'), html);
+    assert(html.includes('`不是代码`'), html);
+    assert(!html.includes('<em>'), html);
+  });
+
+  await test('标题锚点忽略行内语法', () => {
+    const headings = [];
+    renderMarkdown('## 用 [xfm](/x) **构建**', { headings });
+    assert.strictEqual(headings.length, 1);
+    assert.strictEqual(headings[0].text, '用 xfm 构建', JSON.stringify(headings));
+    assert.strictEqual(headings[0].id, '用-xfm-构建', headings[0].id);
+  });
+
+  await test('引用块内可使用文档级链接定义', () => {
+    const html = renderMarkdown('> 见 [文档][d]\n\n[d]: /docs/');
+    assert(html.includes('<a href="/docs/">文档</a>'), html);
+  });
+
+  await test('摘要剔除引用定义与脚注标记', () => {
+    const { markdownPlain } = require('../lib/engine/render');
+    const text = markdownPlain('[文字][ref] 和脚注[^1]\n\n[ref]: https://x.example\n[^1]: 注释');
+    assert(text.includes('文字'), text);
+    assert(!text.includes('https://x.example'), text);
+    assert(!text.includes('[^1]'), text);
+  });
+
   await test('目录采集', () => {
     const headings = [];
     renderMarkdown('## A\n\n### B\n\n#### 不采集\n\n## C', { headings });
@@ -409,6 +488,16 @@ async function testBuild() {
     assert(!fs.existsSync(path.join(tmp, 'dist', 'posts', '半成品', 'index.html')), '草稿被发布了');
   });
 
+  await test('new 同名自动编号，标题含 YAML 特殊字符也能解析', () => {
+    execFileSync(process.execPath, [bin, 'new', '同名标题'], { cwd: tmp, stdio: 'pipe' });
+    execFileSync(process.execPath, [bin, 'new', '同名标题'], { cwd: tmp, stdio: 'pipe' });
+    const files = fs.readdirSync(path.join(tmp, 'content', 'posts')).filter((f) => f.startsWith('同名标题')).sort();
+    assert.deepStrictEqual(files, ['同名标题-2.md', '同名标题.md'], files.join(','));
+    execFileSync(process.execPath, [bin, 'new', 'Hexo: 入门'], { cwd: tmp, stdio: 'pipe' });
+    const fm = parseFrontMatter(fs.readFileSync(path.join(tmp, 'content', 'posts', 'hexo-入门.md'), 'utf8'));
+    assert.strictEqual(fm.data.title, 'Hexo: 入门', JSON.stringify(fm.data));
+  });
+
   await test('草稿不发布', () => {
     fs.writeFileSync(path.join(tmp, 'content', 'posts', 'draft-test.md'),
       '---\ntitle: 草稿测试\ndraft: true\n---\n草稿');
@@ -491,6 +580,10 @@ async function testConsistency() {
   write('docs/b.md', '---\ntitle: B\ngroup: d\nweight: 2\ndate: 2026-01-02 05:00:00\n---\n\nB 内容\n');
   write('c.md', '---\ntitle: C\ndate: 2026-03-05 05:00:00\n---\n\nC 内容 here\n');
   write('slugged.md', '---\ntitle: 无斜杠URL\nurl: custom\n---\n\nx\n');
+  write(
+    'syntax.md',
+    '---\ntitle: 语法\ndate: 2026-02-01 08:00:00\n---\n\n原标题\n====\n\n引用[^a]、[引用链接][r] 与脚注复用[^a]\n\n[^a]: 注释内容\n[r]: ./docs/b.md\n'
+  );
 
   const prod = await build(root);
   const dev = await compileSite(root);
@@ -511,6 +604,13 @@ async function testConsistency() {
   await test('相对 .md 链接在 worker 模式下也被重写', () => {
     const page = prod.pages.find((p) => p.url === '/docs/');
     assert(page.html.includes('href="/docs/b/"'), page.html.slice(0, 400));
+  });
+
+  await test('引用式链接与脚注在 worker 模式下同样解析', () => {
+    const page = prod.pages.find((p) => p.url === '/syntax/');
+    assert(page.html.includes('href="/docs/b/"'), '引用式链接未走链接解析：' + page.html.slice(0, 500));
+    assert(page.html.includes('class="footnote-ref"'), '脚注未渲染');
+    assert(page.html.includes('id="fnref-a-2"'), '脚注多次引用编号错误');
   });
 
   await test('日期按本地时区，不因时区倒退一天', () => {

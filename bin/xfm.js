@@ -137,16 +137,26 @@ async function cmdNew(args) {
   const now = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:00`;
-  const slug = args.slug || title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
-  const file = path.join(root, config.contentDir, args.dir || 'posts', `${slug}.md`);
-  if (fs.existsSync(file) && !args.force) {
-    console.error(`文件已存在：${file}`);
-    process.exit(1);
+  const dir = args.dir || 'posts';
+  // slug：显式指定优先，否则由标题生成；纯符号标题回落到 post
+  const slug =
+    String(args.slug || title)
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, '-')
+      .replace(/^-+|-+$/g, '') || 'post';
+  const dirPath = path.join(root, config.contentDir, dir);
+  let file = path.join(dirPath, `${slug}.md`);
+  // 同名不再直接失败：自动追加 -2 / -3，随时新建同题文章；--force 覆盖原文件
+  if (!args.force) {
+    let n = 2;
+    while (fs.existsSync(file)) file = path.join(dirPath, `${slug}-${n++}.md`);
   }
+  const renamed = path.basename(file, '.md') !== slug;
   await fs.promises.mkdir(path.dirname(file), { recursive: true });
   const fm = [
     '---',
-    `title: ${title}`,
+    // 标题里可能有 `:` `#` 等 YAML 特殊字符，统一用双引号包裹
+    `title: ${JSON.stringify(String(title))}`,
     `date: ${date}`,
     'description: ""',
     `tags: []`,
@@ -165,6 +175,9 @@ async function cmdNew(args) {
     .join('\n');
   await fs.promises.writeFile(file, fm);
   console.log(`${paint(C.green, '✓')} 已创建 ${paint(C.cyan, path.relative(root, file))}`);
+  if (renamed) {
+    console.log(`  ${paint(C.dim, `同名文章已存在，自动改名为 ${path.basename(file)}（想覆盖原文件用 --force）。`)}`);
+  }
   if (args.draft) {
     console.log(`  ${paint(C.dim, '草稿状态：不会出现在构建产物里。发布时把 front-matter 的 draft 改成 false 或删掉该行。')}`);
   } else {
@@ -247,7 +260,7 @@ ${paint(C.bold, '用法')}
 ${paint(C.bold, '命令')}
   dev [目录]           启动开发服务器，文件变更秒级热更新
   build [目录]         生产构建（多线程并行渲染）
-  new <标题>           新建文章（--dir=posts --slug=xxx --draft）
+  new <标题>           新建文章（--dir=posts --slug=xxx --draft，同名自动编号）
   create [目录]        创建新站点（--template=blog|docs）
   clean [目录]         清理 dist 与增量缓存
   info [目录]          查看站点配置
@@ -257,6 +270,7 @@ ${paint(C.bold, '选项')}
   --dev                build 时启用增量缓存
   --template=docs      create 时使用文档模板
   --draft              new 时生成草稿（默认直接可发布）
+  --force              new 时覆盖同名文件，而不是自动编号
   -h, --help           帮助
   -v, --version        显示版本号
 
