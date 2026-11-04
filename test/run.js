@@ -476,6 +476,42 @@ async function testBuild() {
     assert(mp[1].includes('你好，世界') && mp[1].includes('测试站'), '文章页 title 不完整：' + mp[1]);
   });
 
+  await test('init 是 create 的别名', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-alias-'));
+    execFileSync(process.execPath, [bin, 'init', path.join(dir, 'site'), '--template=blog', '--force'], { stdio: 'pipe' });
+    assert(fs.existsSync(path.join(dir, 'site', 'xfm.config.mjs')), 'init 未生成站点');
+    assert(fs.existsSync(path.join(dir, 'site', 'content')), 'init 未生成内容目录');
+  });
+
+  await test('未知命令给建议、退出码 1、不倒整份帮助', () => {
+    let code = 0;
+    let out = '';
+    try {
+      execFileSync(process.execPath, [bin, 'buils'], { stdio: 'pipe', encoding: 'utf8' });
+    } catch (e) {
+      code = e.status;
+      out = String(e.stdout || '') + String(e.stderr || '');
+    }
+    assert(code === 1, '退出码应为 1，实际 ' + code);
+    assert(out.includes('未知命令') && out.includes('xfm build'), '缺少拼写建议：' + out);
+    assert(!out.includes('极致性能的静态站点生成器'), '仍然倒出了整份帮助');
+  });
+
+  await test('未知命令不会命中原型链方法', () => {
+    for (const bad of ['constructor', 'toString']) {
+      let code = 0;
+      let out = '';
+      try {
+        execFileSync(process.execPath, [bin, bad], { stdio: 'pipe', encoding: 'utf8' });
+      } catch (e) {
+        code = e.status;
+        out = String(e.stdout || '') + String(e.stderr || '');
+      }
+      assert(code === 1, bad + ' 退出码应为 1，实际 ' + code);
+      assert(out.includes('未知命令'), bad + ' 未按未知命令处理：' + out.slice(0, 120));
+    }
+  });
+
   await test('new 默认生成可发布文章，--draft 才进草稿', () => {
     execFileSync(process.execPath, [bin, 'new', '默认可见'], { cwd: tmp, stdio: 'pipe' });
     const normal = fs.readFileSync(path.join(tmp, 'content', 'posts', '默认可见.md'), 'utf8');

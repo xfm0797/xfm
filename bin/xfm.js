@@ -227,6 +227,51 @@ async function cmdCreate(args) {
 
 const COMMANDS = { build: cmdBuild, dev: cmdDev, new: cmdNew, clean: cmdClean, info: cmdInfo, create: cmdCreate, help };
 
+// 别名：来自 Hexo 的使用习惯（hexo init / hexo generate / hexo server），
+// 让 npx xfm init 这类最自然的手势直接生效，而不是丢一份帮助就退出。
+const ALIASES = {
+  init: 'create',
+  generate: 'build',
+  gen: 'build',
+  serve: 'dev',
+  server: 'dev',
+  preview: 'dev',
+};
+
+function editDistance(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(
+        prev[j] + 1,
+        cur[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+/** 未知命令时给一个最可能的候选：前缀命中优先，其次编辑距离足够近 */
+function suggestCommand(name) {
+  const pool = [...Object.keys(COMMANDS).filter((k) => k !== 'help'), ...Object.keys(ALIASES)];
+  const lower = name.toLowerCase();
+  const prefix = pool.filter((k) => k.startsWith(lower) && k !== lower).sort((a, b) => a.length - b.length)[0];
+  if (prefix) return prefix;
+  let best = null;
+  let bestD = Infinity;
+  for (const k of pool) {
+    const d = editDistance(lower, k);
+    if (d < bestD) { best = k; bestD = d; }
+  }
+  return bestD <= 2 ? best : null;
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   const cmd = argv[0];
@@ -236,10 +281,25 @@ async function main() {
   if (cmd === '--version' || cmd === '-v' || cmd === 'version') {
     return console.log(require('../package.json').version);
   }
-  const fn = COMMANDS[cmd];
+
+  // 未知选项（xfm --port=4173 这类把选项当命令写）
+  if (cmd.startsWith('-')) {
+    console.error(`\n${paint(C.red, '✗')} 未知选项：${paint(C.bold, cmd)}`);
+    console.error(paint(C.dim, '  用 xfm <命令> [选项]，例如 xfm dev --port=4173；查看 xfm --help\n'));
+    process.exit(1);
+  }
+
+  // 别名解析：init → create，generate → build，serve/preview → dev
+  // 用 own property 判定：否则 xfm constructor / toString 会命中原型链上的函数
+  const own = (obj, k) => Object.prototype.hasOwnProperty.call(obj, k);
+  const resolved = own(COMMANDS, cmd) ? cmd : own(ALIASES, cmd) ? ALIASES[cmd] : null;
+  const fn = resolved ? COMMANDS[resolved] : null;
   if (!fn) {
-    console.error(`未知命令：${cmd}\n`);
-    return help(1);
+    console.error(`\n${paint(C.red, '✗')} 未知命令：${paint(C.bold, cmd)}`);
+    const guess = suggestCommand(cmd);
+    if (guess) console.error(`  你是不是想用 ${paint(C.cyan, 'xfm ' + guess)}？`);
+    console.error(paint(C.dim, '  运行 xfm --help 查看全部命令\n'));
+    process.exit(1);
   }
   try {
     await fn(args);
@@ -265,6 +325,9 @@ ${paint(C.bold, '命令')}
   clean [目录]         清理 dist 与增量缓存
   info [目录]          查看站点配置
 
+${paint(C.bold, '别名')}
+  init = create        generate / gen = build        serve / server / preview = dev
+
 ${paint(C.bold, '选项')}
   --port=4173          dev 端口（默认 4173）
   --dev                build 时启用增量缓存
@@ -276,6 +339,7 @@ ${paint(C.bold, '选项')}
 
 ${paint(C.bold, '示例')}
   xfm create my-blog --template=blog
+  xfm init my-blog            # 同 create，Hexo 习惯
   cd my-blog && xfm dev
   xfm build
 `);
