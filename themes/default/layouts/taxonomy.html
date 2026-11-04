@@ -2,15 +2,15 @@
 {% block main %}
 <section class="hero small">
   <h1>{{ page.title }}</h1>
-  <p class="lead">{{ page.description }}</p>
+  {% if page.description %}<p class="lead">{{ page.description }}</p>{% endif %}
 </section>
-<section class="timeline">
+<div class="post-grid">
   {% for post in page.data.posts %}<article class="card">
+    <div class="card-top"><time class="card-date">{{ post.date }}</time></div>
     <a class="card-title" href="{{ post.url }}">{{ post.title }}</a>
-    <p class="card-desc">{{ post.description }}</p>
-    <div class="card-meta">{{ post.date }}</div>
+    {% if post.description %}<p class="card-desc">{{ post.description }}</p>{% endif %}
   </article>
   {% else %}<p class="empty">暂无内容</p>
   {% endfor %}
-</section>
+</div>
 {% endblock %}

@@ -1,7 +1,14 @@
-{% for post in site.posts %}<article class="card">
+{# 首页文章卡片：两列网格，最多 9 篇，其余走归档页 #}
+{% for post in site.posts %}{% if loop.index <= 9 %}<article class="card">
+  <div class="card-top">
+    <time class="card-date">{{ post.date }}</time>
+    {% if post.readTime %}<span class="card-read">{{ post.readTime }} 分钟</span>{% endif %}
+  </div>
   <a class="card-title" href="{{ post.url }}">{{ post.title }}</a>
-  <p class="card-desc">{{ post.description }}</p>
-  <div class="card-meta">{{ post.date }}{% if post.tags.length %} · {% for t in post.tags %}<span class="tag">{{ t }}</span>{% endfor %}{% endif %}{% if post.readTime %} · {{ post.readTime }} 分钟{% endif %}</div>
-</article>
+  {% if post.description %}<p class="card-desc">{{ post.description }}</p>{% endif %}
+  <div class="card-foot">
+    {% for t in post.tags %}<a class="tag" href="/tags/{{ t }}/">{{ t }}</a>{% endfor %}
+  </div>
+</article>{% endif %}
 {% else %}<p class="empty">还没有文章，运行 <code>xfm new 我的第一篇文章</code> 开始写作。</p>
 {% endfor %}

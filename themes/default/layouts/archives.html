@@ -1,0 +1,23 @@
+{% extend "base.html" %}
+{% block main %}
+<section class="hero small">
+  <p class="eyebrow">归档</p>
+  <h1>{{ page.title }}</h1>
+  {% if page.description %}<p class="lead">{{ page.description }}</p>{% endif %}
+</section>
+
+<div class="archive">
+  {% for y in page.data.years %}<section class="archive-year">
+    <h2 class="archive-year-title">{{ y.year }}<span class="archive-count">{{ y.posts.length }} 篇</span></h2>
+    <ul class="archive-list">
+      {% for post in y.posts %}<li>
+        <time class="archive-date">{{ post.date }}</time>
+        <a class="archive-link" href="{{ post.url }}">{{ post.title }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% else %}<p class="empty">还没有文章，运行 <code>xfm new 我的第一篇文章</code> 开始写作。</p>
+  {% endfor %}
+</div>
+{% endblock %}
