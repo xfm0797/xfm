@@ -233,3 +233,16 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .callout-warning { border-left-color: #f59e0b; }
 .callout-danger { border-left-color: #ef4444; }
 .callout-info { border-left-color: #3b82f6; }
+
+/* ---------- 脚注 ---------- */
+.footnotes {
+  margin-top: 3rem; padding-top: 1.1rem; border-top: 1px solid var(--line);
+  font-size: .9rem; color: var(--fg-soft);
+}
+.footnotes ol { padding-left: 1.3rem; margin: 0; }
+.footnotes li { margin: .35rem 0; }
+.footnotes p { display: inline; margin: 0; }
+.footnote-ref { font-size: .75em; line-height: 0; }
+.footnote-ref a { text-decoration: none; }
+.footnote-back { text-decoration: none; color: var(--fg-faint); margin-left: .15rem; }
+.footnote-back:hover { color: var(--accent); }
