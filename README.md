@@ -62,7 +62,7 @@ Four design decisions carry the performance:
 ## Features
 
 - **Themes**: `{% extend %}` / `{% block %}` template inheritance, `{% include %}` partials, `{# comments #}`, CSS-variable light/dark themes. Ships `default` (blog) and `docs` (sidebar documentation).
-- **Plugins**: five hooks (`extendContext` / `markdown` / `transformHtml` / `afterBuild` / `configureServer`); drop a file into `plugins/` and it loads itself. Ships sitemap, RSS and reading-stats.
+- **Plugins**: six hooks (`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`); drop a file into `plugins/` and it loads itself. Ships eight: `sitemap`, `rss`, `feed-json`, `search`, `seo`, `related`, `llms`, `minify`.
 - **Content**: YAML front-matter, drafts, tag/category/series taxonomies, automatic prev/next, `weight` ordering, and relative `.md` links resolved automatically. Every term gets a real page at `/tags/<name>/`, `/categories/<name>/` and `/series/<name>/`, with encoded URLs written out as readable directories. The default theme also ships a category index (`/categories/`) and a year-grouped archive (`/archives/`), driven by the `indexes` config block and generated only when the theme provides the layout. The post sidebar table of contents highlights the section you are currently reading as you scroll.
 - **Developer experience**: `xfm dev` builds in memory with SSE hot reload (keeps your scroll position), hot-swaps CSS separately, and lists available routes on 404.
 - **Easy to migrate**: template syntax follows Nunjucks/Liquid conventions; config supports `.mjs/.js/.json`.
@@ -100,7 +100,10 @@ export default {
     nav: [{ title: 'Posts', url: '/' }],
   },
   theme: 'default',                  // theme name or path
-  plugins: ['sitemap', 'rss', 'search'], // built-in names or paths
+  plugins: ['sitemap', 'rss', 'feed-json', 'search', 'seo', 'related', 'llms', 'minify'], // built-in names or paths
+  seo: { image: '/og.png', twitter: '@handle' }, // canonical / OG / JSON-LD
+  related: { limit: 3, minScore: 2 },   // related posts count and threshold
+  minify: { aggressive: false },        // HTML minify; aggressive also folds inter-tag newlines
   defaults: { layout: 'post.html' },
   pagination: { perPage: 9 },        // listing pages at /page/2/, /page/3/, ...
   indexes: {                         // category index / archive pages
@@ -157,7 +160,24 @@ In the `docs` theme, `group: Getting Started` plus `weight: 1` builds the sideba
 | `markdown(src, page)` | Current source | Replaces the source |
 | `transformHtml(html, ctx)` | Current HTML | Replaces the HTML |
 | `afterBuild(site)` | Site instance (`site.documents[].html` is **body** HTML, without layout) | Returned `[{path, contents}]` are written out |
+| `afterCollect(site)` | all pages collected (incl. taxonomy / pagination) | ignored; write cross-page data into `page.data` |
 | `configureServer(server)` / `finish(site)` | Site / server | Ignored |
+
+## Built-in plugins
+
+Reference them by name (`plugins: ['seo', 'related']`), with the `xfm:` prefix, or by path.
+
+| Plugin | What it does | Config |
+| --- | --- | --- |
+| `sitemap` | `sitemap.xml` + `robots.txt` | `site.url` |
+| `rss` | RSS 2.0 with full post bodies | `site.rss.limit` |
+| `feed-json` | JSON Feed 1.1 | `feedJson.limit` |
+| `search` | search index + Ctrl/⌘+K panel | `search.maxChars` |
+| `seo` | canonical / Open Graph / Twitter Card / JSON-LD | `seo.image`, `seo.twitter`, `seo.jsonLd` |
+| `related` | related posts (tag 3 / category 2 / series 3) | `related.limit`, `related.minScore` |
+| `llms` | `llms.txt` + `llms-full.txt` | `llms.full`, `llms.maxItems` |
+| `minify` | HTML minify (skipped in dev) | `minify.aggressive` |
+| `reading-stats` | reading time and site stats | — |
 
 ## Plugin example
 
@@ -192,7 +212,7 @@ Template context: `site.*` (site config and aggregated data), `page.*` (current 
 xfm/
 ├── bin/xfm.js         # CLI (build/dev/new/create/clean/info)
 ├── lib/engine/         # markdown / template / render / frontmatter / theme / plugins / site / worker / server / config
-├── lib/plugins/        # built-in plugins (sitemap / rss / reading-stats)
+├── lib/plugins/        # built-in plugins (sitemap / rss / feed-json / search / seo / related / llms / minify / reading-stats)
 ├── lib/cli/scaffold.js # create scaffolding
 ├── themes/default/     # blog theme (light/dark)
 ├── themes/docs/        # docs theme (sidebar navigation)

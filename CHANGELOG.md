@@ -4,6 +4,52 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
+to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
+
+## [0.4.1] - 2026-11-09
+
+### Added
+
+- Five new built-in plugins, all zero-dependency and covered by the test suite:
+  - `seo` — per-page canonical, Open Graph, Twitter Card and JSON-LD (Article
+    for posts, WebSite + SearchAction for the home page). A hand-written
+    `canonical` / `og:title` in the template is respected; front-matter can set
+    `image`, `canonical`, `noindex` or skip the page with `seo: false`.
+  - `related` — scores every post by shared tags (3), category (2) and series
+    (3) before rendering and exposes the result as `page.data.related`, so the
+    worker pool stays active. `related.limit` / `related.minScore` tune it;
+    front-matter can pass an explicit list or opt out with `related: false`.
+  - `llms` — writes `llms.txt` and `llms-full.txt` following the llmstxt.org
+    convention (grouped post index, optional full text, `llms.full: false`).
+  - `feed-json` — JSON Feed 1.1 next to the existing RSS output.
+  - `minify` — production-only HTML minifier (comments, trailing whitespace,
+    blank lines, indentation) that leaves `<pre>` / `<code>` / `<textarea>` /
+    `<script>` / `<style>` untouched; `minify.aggressive` also folds newlines
+    between tags.
+- New `afterCollect` plugin hook: runs once every page is collected (including
+  taxonomy, index and pagination pages) and before rendering, so plugins can
+  write cross-page data into `page.data`.
+- Both themes render a related-posts block when the `related` plugin is on.
+- The scaffold now enables the modern set: `sitemap`, `rss`, `feed-json`,
+  `search`, `seo`, `related`, `llms`, `minify`.
+
+### Changed
+
+- `transformHtml` plugins no longer disable the worker pool: workers handle
+  Markdown and template rendering, and the hook runs once per page on the main
+  thread afterwards. Large sites keep their parallelism with `seo` / `minify`.
+- Related-post URLs are folded into the page hash, so a post that gains or
+  loses a neighbour is re-rendered by the incremental cache.
+
+### Fixed
+
+- `xfm dev` now serves plugin outputs (`search.json`, `sitemap.xml`,
+  `feed.xml`, `feed.json`, `llms.txt`, ...) from memory. `afterBuild` never ran
+  in dev before, so the search panel returned 404 locally.
+- `minify` normalises CRLF before collapsing whitespace (templates and Markdown
+  output used mixed line endings) and drops whitespace-only lines.
+
 ## [0.4.0] - 2026-11-09
 
 ### Added

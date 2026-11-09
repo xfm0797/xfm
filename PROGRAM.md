@@ -40,11 +40,11 @@ xfm-0.4.0/
 │   │   ├── render.js      render pipeline (shared by main thread and workers)
 │   │   ├── worker.js      worker-thread rendering
 │   │   ├── theme.js       theme loading and inheritance
-│   │   ├── plugins.js     plugin system (5 hooks)
+│   │   ├── plugins.js     plugin system (6 hooks)
 │   │   ├── frontmatter.js YAML subset parser
 │   │   ├── config.js      config loading and deep merge
 │   │   └── server.js      dev server (SSE hot reload)
-│   └── plugins/           built-in plugins: sitemap / rss / reading-stats / search
+│   └── plugins/           built-in plugins: sitemap / rss / feed-json / search / seo / related / llms / minify / reading-stats
 ├── themes/
 │   ├── default/           blog theme
 │   └── docs/              docs theme (grouped left sidebar)

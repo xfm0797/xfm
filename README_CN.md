@@ -60,9 +60,11 @@ xfm build            # 生产构建
 ## 特性
 
 - **主题**：`{% extend %}` / `{% block %}` 模板继承、`{% include %}` 片段、`{# 注释 #}`、CSS 变量深浅色主题；内置 `default`（博客）与 `docs`（侧栏文档）两套主题。
-- **插件**：五个钩子（`extendContext` / `markdown` / `transformHtml` / `afterBuild` / `configureServer`），放进 `plugins/` 目录自动加载；内置 sitemap、RSS、阅读统计三个插件。
+- **插件**：六个钩子（`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`），放进 `plugins/` 目录自动加载。内置 8 个：`sitemap`、`rss`、`feed-json`、`search`、`seo`、`related`、`llms`、`minify`。
 - **内容**：YAML front-matter、草稿、标签/分类/系列聚合、自动 prev/next、按 weight 排序、`.md` 相对链接自动解析。每个标签/分类/系列都会生成独立页面（`/tags/<name>/`、`/categories/<name>/`、`/series/<name>/`），URL 编码的路径会还原成可读的目录名。默认主题还带分类索引页（`/categories/`）与按年归档页（`/archives/`），由 `indexes` 配置项驱动，主题提供对应布局时才会生成。文章页右侧目录会跟随滚动高亮当前小节。列表分页生成真实静态页（`/page/2/`…，`pagination` 配置驱动）。
 - **搜索与阅读**：内置 `search` 插件生成 `search.json` 索引，主题带 Ctrl/⌘+K 搜索面板（纯前端筛选、零依赖）；代码块复制、图片点击放大、阅读进度条、外链新窗口均为主题自带的小交互。
+- **SEO 与 AI 友好**：`seo` 插件按页注入 canonical / Open Graph / Twitter Card / JSON-LD；`llms` 生成 `llms.txt` 与 `llms-full.txt`（按 llmstxt.org 约定）；`feed-json` 提供 JSON Feed 1.1。
+- **相关文章**：`related` 在渲染前按标签/分类/系列加权算好，写进 `page.data.related`，主题直接遍历。
 - **子路径部署**：`site.base`（如 `/blog/`）由引擎在渲染出口统一补前缀，模板/Markdown/sitemap/RSS 全部生效，dev 预览同样按前缀访问。
 - **开发体验**：`xfm dev` 内存构建 + SSE 热更新（保持滚动位置）、CSS 单独热替换、404 页列出可用路由。
 - **易迁移**：模板语法兼容 Nunjucks/Liquid 习惯，配置文件支持 `.mjs/.js/.json`。
@@ -100,7 +102,10 @@ export default {
     nav: [{ title: '文章', url: '/' }],
   },
   theme: 'default',                  // 主题名或路径
-  plugins: ['sitemap', 'rss', 'search'], // 内置插件，也可写路径
+  plugins: ['sitemap', 'rss', 'feed-json', 'search', 'seo', 'related', 'llms', 'minify'], // 内置插件，也可写路径
+  seo: { image: '/og.png', twitter: '@handle' }, // canonical / OG / JSON-LD
+  related: { limit: 3, minScore: 2 },   // 相关文章数量与最低相关度
+  minify: { aggressive: false },        // HTML 压缩；aggressive 会折叠标签间换行
   defaults: { layout: 'post.html' },
   pagination: { perPage: 9 },        // 列表分页：/page/2/、/page/3/…
   indexes: {                         // 分类索引页 / 归档页
@@ -157,7 +162,24 @@ const ok = true; // 内置语法高亮
 | `markdown(src, page)` | 当前源码 | 替换源码 |
 | `transformHtml(html, ctx)` | 当前 HTML | 替换 HTML |
 | `afterBuild(site)` | 站点实例（`site.documents[].html` 为**正文** HTML，不含布局） | 返回的 `[{path, contents}]` 被汇总写出 |
+| `afterCollect(site)` | 全部页面已收集（含聚合页、分页页） | 忽略；可往 `page.data` 写跨页数据（如相关文章） |
 | `configureServer(server)` / `finish(site)` | 站点/服务器 | 忽略 |
+
+## 内置插件
+
+配置里写插件名即可（`plugins: ['seo', 'related']`），也可以用 `xfm:<name>` 前缀或直接写路径。
+
+| 插件 | 作用 | 主要配置 |
+| --- | --- | --- |
+| `sitemap` | `sitemap.xml` + `robots.txt` | `site.url` |
+| `rss` | RSS 2.0（正文全文） | `site.rss.limit` |
+| `feed-json` | JSON Feed 1.1 | `feedJson.limit` |
+| `search` | 搜索索引 + Ctrl/⌘+K 面板 | `search.maxChars` |
+| `seo` | canonical / Open Graph / Twitter Card / JSON-LD | `seo.image`、`seo.twitter`、`seo.jsonLd` |
+| `related` | 相关文章（标签 3 分 / 分类 2 分 / 系列 3 分） | `related.limit`、`related.minScore` |
+| `llms` | `llms.txt` + `llms-full.txt` | `llms.full`、`llms.maxItems` |
+| `minify` | HTML 压缩（dev 模式自动跳过） | `minify.aggressive` |
+| `reading-stats` | 阅读时长与站点统计 | — |
 
 ## 插件示例
 
@@ -192,7 +214,7 @@ themes/my-theme/
 xfm/
 ├── bin/xfm.js         # CLI（build/dev/new/create/clean/info）
 ├── lib/engine/         # markdown / template / render / frontmatter / theme / plugins / site / worker / server / config
-├── lib/plugins/        # 内置插件（sitemap / rss / reading-stats）
+├── lib/plugins/        # 内置插件（sitemap / rss / feed-json / search / seo / related / llms / minify / reading-stats）
 ├── lib/cli/scaffold.js # create 脚手架
 ├── themes/default/     # 博客主题（深浅色）
 ├── themes/docs/        # 文档主题（侧栏导航）
