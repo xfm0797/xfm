@@ -887,6 +887,136 @@ async function testConsistency() {
   fs.rmSync(root, { recursive: true, force: true });
 }
 
+/* ---------------- 0.4.0：base / 分页 / 搜索 ---------------- */
+async function testExtras() {
+  console.log('\n站点扩展（base / 分页 / 搜索）');
+
+  const { execFileSync } = require('child_process');
+  const bin = path.join(__dirname, '..', 'bin', 'xfm.js');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-extra-'));
+
+  const write = (rel, body) => {
+    const abs = path.join(root, 'content', rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, body);
+  };
+
+  try {
+    fs.writeFileSync(
+      path.join(root, 'xfm.config.mjs'),
+      `export default {
+  site: {
+    title: '扩展站',
+    base: '/blog/',
+    url: 'https://example.com',
+    nav: [{ title: '首页', url: '/' }, { title: '归档', url: '/archives/' }],
+  },
+  theme: 'themes/default',
+  plugins: ['sitemap', 'rss', 'search'],
+  pagination: { perPage: 2 },
+  defaults: { layout: 'post.html' },
+};
+`
+    );
+    write('index.md', '---\ntitle: 首页\nlayout: index.html\n---\n');
+    for (let i = 1; i <= 5; i++) {
+      write(
+        `posts/p${i}.md`,
+        `---\ntitle: 文章 ${i}\ndate: 2026-03-0${i}\ntags: [标签${i}]\n---\n\n## 第 ${i} 节\n\n正文 ${i} 号，[外链](https://example.com/x${i})。\n`
+      );
+    }
+    write('hidden.md', '---\ntitle: 不参与搜索\ntype: page\ndate: 2026-01-01\nsearch: false\n---\n\n这页不进索引。\n');
+
+    execFileSync(process.execPath, [bin, 'build', root], { stdio: 'pipe' });
+
+    await test('site.base 只影响链接，不影响落盘路径', () => {
+      assert(fs.existsSync(path.join(root, 'dist', 'assets', 'style.css')), '资源落盘路径被 base 影响');
+      assert(fs.existsSync(path.join(root, 'dist', 'posts', 'p1', 'index.html')), '页面落盘路径被 base 影响');
+
+      const home = fs.readFileSync(path.join(root, 'dist', 'index.html'), 'utf8');
+      assert(home.includes('href="/blog/assets/style.css"'), '样式表没带前缀');
+      assert(home.includes('src="/blog/assets/ux.js"'), '脚本没带前缀');
+      assert(home.includes('href="/blog/posts/p5/"'), '文章链接没带前缀');
+      assert(home.includes('href="/blog/"'), '品牌/首页链接没带前缀');
+
+      const post = fs.readFileSync(path.join(root, 'dist', 'posts', 'p1', 'index.html'), 'utf8');
+      assert(post.includes('href="https://example.com/x1"'), '外链被改写了');
+      assert(!post.includes('/blog/blog/'), '前缀被重复叠加');
+    });
+
+    await test('sitemap / 搜索索引里的地址带 base', () => {
+      const sm = fs.readFileSync(path.join(root, 'dist', 'sitemap.xml'), 'utf8');
+      assert(sm.includes('<loc>https://example.com/blog/posts/p1/</loc>'), 'sitemap 未拼上 url+base：' + sm.slice(0, 200));
+      const index = JSON.parse(fs.readFileSync(path.join(root, 'dist', 'search.json'), 'utf8'));
+      assert.strictEqual(index.count, 5, '索引条数不对：' + index.count);
+      assert(index.items.every((it) => it.url.startsWith('/blog/')), '索引 url 没带 base');
+      assert(!index.items.some((it) => it.title === '不参与搜索'), 'search:false 的页面进了索引');
+      assert(!index.items.some((it) => it.url === '/blog/'), '首页不该进索引');
+    });
+
+    await test('分页生成真实静态页，条数按 perPage', () => {
+      assert(fs.existsSync(path.join(root, 'dist', 'page', '2', 'index.html')), '第 2 页没生成');
+      assert(fs.existsSync(path.join(root, 'dist', 'page', '3', 'index.html')), '第 3 页没生成');
+      assert(!fs.existsSync(path.join(root, 'dist', 'page', '4')), '多生成了第 4 页');
+
+      const home = fs.readFileSync(path.join(root, 'dist', 'index.html'), 'utf8');
+      assert.strictEqual((home.match(/class="card"/g) || []).length, 2, '首页卡片数不等于 perPage');
+      const p3 = fs.readFileSync(path.join(root, 'dist', 'page', '3', 'index.html'), 'utf8');
+      assert.strictEqual((p3.match(/class="card"/g) || []).length, 1, '末页条数不对');
+
+      assert(home.includes('href="/blog/page/2/"'), '首页缺下一页链接');
+      assert(p3.includes('href="/blog/page/2/"'), '末页缺上一页链接');
+      assert(/第 3 页/.test(p3), '分页页标题没标注页码');
+      assert(p3.includes('is-current'), '分页组件没标出当前页');
+    });
+
+    await test('分页页不进 RSS、不进导航', () => {
+      const rss = fs.readFileSync(path.join(root, 'dist', 'feed.xml'), 'utf8');
+      assert(!rss.includes('/page/2/'), '分页页混进了 RSS');
+      const idx = JSON.parse(fs.readFileSync(path.join(root, 'dist', 'search.json'), 'utf8'));
+      assert(!idx.items.some((it) => it.url.includes('/page/')), '分页页混进了搜索索引');
+    });
+
+    await test('首页模板不渲染列表时不生成分页', () => {
+      const docsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-nopage-'));
+      try {
+        execFileSync(process.execPath, [bin, 'create', docsRoot, '--template=docs', '--force'], { stdio: 'pipe' });
+        for (let i = 1; i <= 4; i++) {
+          fs.writeFileSync(
+            path.join(docsRoot, 'content', 'docs', `p${i}.md`),
+            `---\ntitle: 文档 ${i}\ngroup: 指南\nweight: ${i}\ndate: 2026-02-0${i}\n---\n\n正文\n`
+          );
+        }
+        execFileSync(process.execPath, [bin, 'build', docsRoot], { stdio: 'pipe' });
+        assert(!fs.existsSync(path.join(docsRoot, 'dist', 'page')), 'docs 主题不该生成分页页');
+      } finally {
+        fs.rmSync(docsRoot, { recursive: true, force: true });
+      }
+    });
+
+    await test('站点搜索生成索引且模板按需引入脚本', () => {
+      const home = fs.readFileSync(path.join(root, 'dist', 'index.html'), 'utf8');
+      assert(home.includes('data-search-open'), '导航缺搜索入口');
+      assert(home.includes('/blog/assets/search.js'), '没引入 search.js');
+
+      const off = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-nosearch-'));
+      try {
+        execFileSync(process.execPath, [bin, 'create', off, '--template=blog', '--force'], { stdio: 'pipe' });
+        const cfg = path.join(off, 'xfm.config.mjs');
+        fs.writeFileSync(cfg, fs.readFileSync(cfg, 'utf8').replace("'sitemap', 'rss', 'search'", "'sitemap', 'rss'"));
+        execFileSync(process.execPath, [bin, 'build', off], { stdio: 'pipe' });
+        assert(!fs.existsSync(path.join(off, 'dist', 'search.json')), '未启用插件却生成了索引');
+        const page = fs.readFileSync(path.join(off, 'dist', 'index.html'), 'utf8');
+        assert(!page.includes('search.js'), '未启用插件却引入了 search.js');
+      } finally {
+        fs.rmSync(off, { recursive: true, force: true });
+      }
+    });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
 (async () => {
   const t0 = performance.now();
   await testMarkdown();
@@ -894,6 +1024,7 @@ async function testConsistency() {
   await testFrontMatter();
   await testBuild();
   await testConsistency();
+  await testExtras();
   const ms = (performance.now() - t0).toFixed(0);
 
   console.log(`\n${passed} 通过，${failed} 失败（${ms}ms）\n`);
