@@ -7,6 +7,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.4] - 2026-11-09
+
+### Fixed
+
+- `xfm create` no longer overwrites an existing `package.json`. The file is merged instead, so
+  a site that installed plugins before scaffolding keeps its `xfm-plugin-*` dependencies —
+  previously the generated file replaced them and the plugins silently stopped loading.
+
+### Added
+
+- One test (111 → 112) covering the merge and the "plugins still load after `create`" path.
+
 ## [0.4.3] - 2026-11-09
 
 ### Changed

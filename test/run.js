@@ -540,6 +540,32 @@ async function testBuild() {
     }
   });
 
+  await test('xfm create 合并已有的 package.json，不冲掉装好的插件', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-plug-merge-'));
+    try {
+      fs.writeFileSync(
+        path.join(dir, 'package.json'),
+        JSON.stringify(
+          { name: 'keep-me', scripts: { test: 'echo hi' }, dependencies: { 'xfm-plugin-rss': '^0.4.2' } },
+          null,
+          2
+        )
+      );
+      scaffoldSite(dir, ['--template=blog'], []);
+      const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+      assert.strictEqual(pkg.name, 'keep-me', '已有 name 被覆盖');
+      assert.strictEqual(pkg.scripts.test, 'echo hi', '已有 scripts 被覆盖');
+      assert.strictEqual(pkg.scripts.dev, 'xfm dev', '没有补上 dev 脚本');
+      assert(pkg.dependencies && pkg.dependencies['xfm-plugin-rss'], '依赖被脚手架冲掉了');
+
+      // 依赖还在，插件就还应该生效
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      assert(fs.existsSync(path.join(dir, 'dist', 'feed.xml')), 'create 之后插件不再自动加载');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   await test('插件不再随内核发布：lib/plugins 目录已移除', () => {
     assert(!fs.existsSync(path.join(__dirname, '..', 'lib', 'plugins')), 'lib/plugins 仍存在');
     const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
