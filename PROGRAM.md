@@ -28,7 +28,7 @@ Or reference it by path with `npm link` (handy while debugging).
 ## Directory layout
 
 ```
-xfm-0.4.0/
+xfm-0.4.2/
 ├── bin/xfm.js            CLI entry (build / dev / new / create / clean / info)
 ├── lib/
 │   ├── index.js           programmatic API (build / createSite)
@@ -40,11 +40,12 @@ xfm-0.4.0/
 │   │   ├── render.js      render pipeline (shared by main thread and workers)
 │   │   ├── worker.js      worker-thread rendering
 │   │   ├── theme.js       theme loading and inheritance
-│   │   ├── plugins.js     plugin system (6 hooks)
+│   │   ├── plugins.js     plugin system (6 hooks + package.json auto-discovery)
+│   │   ├── helpers.js     plugin helper set exposed as site.helpers
 │   │   ├── frontmatter.js YAML subset parser
 │   │   ├── config.js      config loading and deep merge
 │   │   └── server.js      dev server (SSE hot reload)
-│   └── plugins/           built-in plugins: sitemap / rss / feed-json / search / seo / related / llms / minify / reading-stats
+├── packages/              official plugins (published separately as xfm-plugin-*, not bundled)
 ├── themes/
 │   ├── default/           blog theme
 │   └── docs/              docs theme (grouped left sidebar)

@@ -22,6 +22,7 @@ xfm build            # 生产构建
 > **包名 `xfmpress`，命令 `xfm`**（`npm i -g xfmpress` → 用 `xfm` 调用）。定位是 **Static Site Generator（静态站点生成器）**：把 Markdown 压成纯静态 HTML。
 > 与同系列的 [hexo-theme-xfm](https://github.com/xfm0797/hexo-theme-xfm) 共用 `xfm` 品牌。
 > 完整的三种安装方式、权限排错与 FAQ 见 **[INSTALL_CN.md](./INSTALL_CN.md)**。
+> 插件**不随内核发布**：站点里 `npm i -D xfm-plugin-rss` 装了就生效，详见 [插件](#插件)。
 
 ## 性能
 
@@ -60,7 +61,7 @@ xfm build            # 生产构建
 ## 特性
 
 - **主题**：`{% extend %}` / `{% block %}` 模板继承、`{% include %}` 片段、`{# 注释 #}`、CSS 变量深浅色主题；内置 `default`（博客）与 `docs`（侧栏文档）两套主题。
-- **插件**：六个钩子（`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`），放进 `plugins/` 目录自动加载。内置 8 个：`sitemap`、`rss`、`feed-json`、`search`、`seo`、`related`、`llms`、`minify`。
+- **插件**：六个钩子（`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`）。**内核不带任何插件** —— 像 Hexo 一样从 npm 装（`npm i -D xfm-plugin-rss`），装了就自动生效；9 个官方插件在 [`packages/`](./packages) 里独立发布。
 - **内容**：YAML front-matter、草稿、标签/分类/系列聚合、自动 prev/next、按 weight 排序、`.md` 相对链接自动解析。每个标签/分类/系列都会生成独立页面（`/tags/<name>/`、`/categories/<name>/`、`/series/<name>/`），URL 编码的路径会还原成可读的目录名。默认主题还带分类索引页（`/categories/`）与按年归档页（`/archives/`），由 `indexes` 配置项驱动，主题提供对应布局时才会生成。文章页右侧目录会跟随滚动高亮当前小节。列表分页生成真实静态页（`/page/2/`…，`pagination` 配置驱动）。
 - **搜索与阅读**：内置 `search` 插件生成 `search.json` 索引，主题带 Ctrl/⌘+K 搜索面板（纯前端筛选、零依赖）；代码块复制、图片点击放大、阅读进度条、外链新窗口均为主题自带的小交互。
 - **SEO 与 AI 友好**：`seo` 插件按页注入 canonical / Open Graph / Twitter Card / JSON-LD；`llms` 生成 `llms.txt` 与 `llms-full.txt`（按 llmstxt.org 约定）；`feed-json` 提供 JSON Feed 1.1。
@@ -102,10 +103,12 @@ export default {
     nav: [{ title: '文章', url: '/' }],
   },
   theme: 'default',                  // 主题名或路径
-  plugins: ['sitemap', 'rss', 'feed-json', 'search', 'seo', 'related', 'llms', 'minify'], // 内置插件，也可写路径
-  seo: { image: '/og.png', twitter: '@handle' }, // canonical / OG / JSON-LD
-  related: { limit: 3, minScore: 2 },   // 相关文章数量与最低相关度
-  minify: { aggressive: false },        // HTML 压缩；aggressive 会折叠标签间换行
+  plugins: ['sitemap', 'rss'],       // 可选 —— 装好的 xfm-plugin-* 依赖本来就会自动加载
+                                     // （短名 → xfm-plugin-<name>；'./plugins/x.js' → 站点内本地插件）
+  seo: { image: '/og.png', twitter: '@handle' }, // xfm-plugin-seo 用
+  related: { limit: 3, minScore: 2 },   // xfm-plugin-related 用：数量与最低相关度
+  minify: { aggressive: false },        // xfm-plugin-minify 用：aggressive 会折叠标签间换行
+  search: { path: 'search.json' },      // xfm-plugin-search 用
   defaults: { layout: 'post.html' },
   pagination: { perPage: 9 },        // 列表分页：/page/2/、/page/3/…
   indexes: {                         // 分类索引页 / 归档页
@@ -165,36 +168,78 @@ const ok = true; // 内置语法高亮
 | `afterCollect(site)` | 全部页面已收集（含聚合页、分页页） | 忽略；可往 `page.data` 写跨页数据（如相关文章） |
 | `configureServer(server)` / `finish(site)` | 站点/服务器 | 忽略 |
 
-## 内置插件
+## 插件
 
-配置里写插件名即可（`plugins: ['seo', 'related']`），也可以用 `xfm:<name>` 前缀或直接写路径。
+**内核不带任何插件。** `npm i -g xfmpress` 只装生成器和两套主题，其余都按需安装 —— 和 Hexo 的做法一致：
 
-| 插件 | 作用 | 主要配置 |
-| --- | --- | --- |
-| `sitemap` | `sitemap.xml` + `robots.txt` | `site.url` |
-| `rss` | RSS 2.0（正文全文） | `site.rss.limit` |
-| `feed-json` | JSON Feed 1.1 | `feedJson.limit` |
-| `search` | 搜索索引 + Ctrl/⌘+K 面板 | `search.maxChars` |
-| `seo` | canonical / Open Graph / Twitter Card / JSON-LD | `seo.image`、`seo.twitter`、`seo.jsonLd` |
-| `related` | 相关文章（标签 3 分 / 分类 2 分 / 系列 3 分） | `related.limit`、`related.minScore` |
-| `llms` | `llms.txt` + `llms-full.txt` | `llms.full`、`llms.maxItems` |
-| `minify` | HTML 压缩（dev 模式自动跳过） | `minify.aggressive` |
-| `reading-stats` | 阅读时长与站点统计 | — |
+```bash
+npm i -D xfm-plugin-sitemap xfm-plugin-rss xfm-plugin-search
+```
 
-## 插件示例
+站点 `package.json` 里任何 `xfm-plugin-*` 依赖都会被自动加载，不需要改配置。插件在启动时解析，装完要重启 `xfm dev`。
+
+想固定加载顺序，或者混入站点内的本地插件，也可以显式声明：
 
 ```js
-// plugins/search-index.js —— 放进 plugins/ 目录即生效
-module.exports = () => ({
-  name: 'search-index',
-  afterBuild(site) {
-    const index = site.documents.map(d => ({
-      title: d.title, url: d.url,
-      text: d.html.replace(/<[^>]+>/g, ' ').slice(0, 800),
-    }));
-    return [{ path: 'search.json', contents: JSON.stringify(index) }];
-  },
-});
+// xfm.config.mjs
+export default {
+  plugins: ['sitemap', 'rss', './plugins/my-plugin.js'],
+};
+```
+
+短名解析成 `xfm-plugin-<name>`，路径指向站点里的文件。写了却没装会直接报错，并给出对应的 `npm i` 命令。
+
+### 官方插件
+
+| 包名 | 产物 | 主要配置 |
+| --- | --- | --- |
+| [`xfm-plugin-sitemap`](./packages/sitemap) | `sitemap.xml`、`robots.txt` | —（配了 `site.url` 才输出绝对 `<loc>`） |
+| [`xfm-plugin-rss`](./packages/rss) | `feed.xml`（RSS 2.0，正文全文） | `site.rss.limit` |
+| [`xfm-plugin-feed-json`](./packages/feed-json) | `feed.json`（JSON Feed 1.1） | `feedJson.path`、`feedJson.limit` |
+| [`xfm-plugin-search`](./packages/search) | `search.json` + Ctrl/⌘+K 面板 | `search.path`、`search.maxChars`、`search.hint` |
+| [`xfm-plugin-seo`](./packages/seo) | canonical、Open Graph、Twitter Card、JSON-LD | `seo.image`、`seo.twitter`、`seo.jsonLd` |
+| [`xfm-plugin-related`](./packages/related) | 相关文章 → `page.data.related` | `related.limit`、`related.minScore` |
+| [`xfm-plugin-llms`](./packages/llms) | `llms.txt`、`llms-full.txt` | `llms.full`、`llms.maxItems` |
+| [`xfm-plugin-minify`](./packages/minify) | 更小的 HTML（仅生产构建） | `minify.enabled`、`minify.aggressive` |
+| [`xfm-plugin-reading-stats`](./packages/reading-stats) | `stats.json`、`site.stats` | — |
+
+每个包都有自己的 README，写了安装方式、可选项与产物。
+
+`related` 在渲染前按标签（3 分）/ 分类（2 分）/ 系列（3 分）加权算好写进 `page.data.related`，因此不会让渲染退回单线程；两套主题只要发现这个键就渲染推荐区块。`seo` 不会重复注入模板里已经手写的 canonical / `og:*`。`minify` 跳过 `<pre>`、`<code>`、`<textarea>`、`<script>`、`<style>`，dev 模式完全不执行。
+
+### 页面级开关（front-matter）
+
+| front-matter | 作用 |
+| --- | --- |
+| `sitemap: false` | 不进 `sitemap.xml` |
+| `rss: false` | 不进 `feed.xml` 与 `feed.json` |
+| `search: false` | 不进搜索索引 |
+| `llms: false` | 不进 `llms.txt` |
+| `related: false` / `related: [url, ...]` | 关闭推荐 / 手动指定推荐列表 |
+| `seo: false`、`noindex: true`、`image`、`canonical` | SEO 插件行为 |
+
+主题只判断 `site.search` 与 `page.data.related` 是否存在，卸掉这两个插件只会少一块功能，不会让构建失败。
+
+## 编写插件
+
+插件就是导出 `(site) => ({ name, ...hooks })` 的模块。按 `xfm-plugin-<name>` 发布到 npm 即可被自动加载，也可以直接放进站点的 `plugins/` 目录。`site.helpers` 提供官方插件用的 URL 与文本工具，插件不必去 require 内核内部文件：
+
+```js
+// plugins/reading-index.js —— 放进 plugins/ 目录即生效
+module.exports = (site) => {
+  const { plainText, absoluteUrl } = site.helpers;
+  return {
+    name: 'reading-index',
+    afterBuild(site) {
+      const index = site.documents.map((d) => ({
+        title: d.title,
+        url: absoluteUrl(site.config.site, d.url),
+        text: plainText(d.html).slice(0, 800),
+      }));
+      return [{ path: 'index.json', contents: JSON.stringify(index) }];
+    },
+  };
+};
 ```
 
 ## 主题结构
@@ -214,13 +259,13 @@ themes/my-theme/
 xfm/
 ├── bin/xfm.js         # CLI（build/dev/new/create/clean/info）
 ├── lib/engine/         # markdown / template / render / frontmatter / theme / plugins / site / worker / server / config
-├── lib/plugins/        # 内置插件（sitemap / rss / feed-json / search / seo / related / llms / minify / reading-stats）
 ├── lib/cli/scaffold.js # create 脚手架
+├── packages/           # 官方插件，各自以 xfm-plugin-* 独立发布
 ├── themes/default/     # 博客主题（深浅色）
 ├── themes/docs/        # 文档主题（侧栏导航）
 ├── examples/blog/      # 可构建的示例站点
 ├── bench/bench.js      # 基准测试（分阶段耗时）
-└── test/run.js         # 95 项测试（零依赖）
+└── test/run.js         # 111 项测试（零依赖）
 ```
 
 ## 部署
@@ -234,7 +279,7 @@ xfm/
 ## 本地开发
 
 ```bash
-npm run test           # 95 项测试
+npm test               # 111 项测试
 npm run bench          # 1000 页基准（分阶段耗时）
 npm run build:example  # 构建示例站点
 npm run dev            # 开发示例站点

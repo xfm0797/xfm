@@ -23,6 +23,7 @@ xfm build            # production build
 > This is a **static site generator**: it compresses Markdown into plain static HTML.
 > Shares the `xfm` brand with [hexo-theme-xfm](https://github.com/xfm0797/hexo-theme-xfm).
 > All three install methods, permission troubleshooting and the FAQ live in **[INSTALL.md](./INSTALL.md)**.
+> Plugins are **not** bundled: install what you need in the site (`npm i -D xfm-plugin-rss`) — see [Plugins](#plugins).
 
 ## Performance
 
@@ -62,7 +63,7 @@ Four design decisions carry the performance:
 ## Features
 
 - **Themes**: `{% extend %}` / `{% block %}` template inheritance, `{% include %}` partials, `{# comments #}`, CSS-variable light/dark themes. Ships `default` (blog) and `docs` (sidebar documentation).
-- **Plugins**: six hooks (`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`); drop a file into `plugins/` and it loads itself. Ships eight: `sitemap`, `rss`, `feed-json`, `search`, `seo`, `related`, `llms`, `minify`.
+- **Plugins**: six hooks (`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`). **Nothing is bundled with the core** — install plugins from npm like Hexo (`npm i -D xfm-plugin-rss`) and they load themselves; nine official ones live in [`packages/`](./packages).
 - **Content**: YAML front-matter, drafts, tag/category/series taxonomies, automatic prev/next, `weight` ordering, and relative `.md` links resolved automatically. Every term gets a real page at `/tags/<name>/`, `/categories/<name>/` and `/series/<name>/`, with encoded URLs written out as readable directories. The default theme also ships a category index (`/categories/`) and a year-grouped archive (`/archives/`), driven by the `indexes` config block and generated only when the theme provides the layout. The post sidebar table of contents highlights the section you are currently reading as you scroll.
 - **Developer experience**: `xfm dev` builds in memory with SSE hot reload (keeps your scroll position), hot-swaps CSS separately, and lists available routes on 404.
 - **Easy to migrate**: template syntax follows Nunjucks/Liquid conventions; config supports `.mjs/.js/.json`.
@@ -100,10 +101,12 @@ export default {
     nav: [{ title: 'Posts', url: '/' }],
   },
   theme: 'default',                  // theme name or path
-  plugins: ['sitemap', 'rss', 'feed-json', 'search', 'seo', 'related', 'llms', 'minify'], // built-in names or paths
-  seo: { image: '/og.png', twitter: '@handle' }, // canonical / OG / JSON-LD
-  related: { limit: 3, minScore: 2 },   // related posts count and threshold
-  minify: { aggressive: false },        // HTML minify; aggressive also folds inter-tag newlines
+  plugins: ['sitemap', 'rss'],       // optional — installed xfm-plugin-* deps load anyway
+                                     // (short name → xfm-plugin-<name>; './plugins/x.js' → local file)
+  seo: { image: '/og.png', twitter: '@handle' }, // used by xfm-plugin-seo
+  related: { limit: 3, minScore: 2 },   // used by xfm-plugin-related
+  minify: { aggressive: false },        // used by xfm-plugin-minify; folds inter-tag newlines
+  search: { path: 'search.json' },      // used by xfm-plugin-search
   defaults: { layout: 'post.html' },
   pagination: { perPage: 9 },        // listing pages at /page/2/, /page/3/, ...
   indexes: {                         // category index / archive pages
@@ -163,36 +166,89 @@ In the `docs` theme, `group: Getting Started` plus `weight: 1` builds the sideba
 | `afterCollect(site)` | all pages collected (incl. taxonomy / pagination) | ignored; write cross-page data into `page.data` |
 | `configureServer(server)` / `finish(site)` | Site / server | Ignored |
 
-## Built-in plugins
+## Plugins
 
-Reference them by name (`plugins: ['seo', 'related']`), with the `xfm:` prefix, or by path.
+**The core ships no plugins.** `npm i -g xfmpress` installs the generator and the two themes;
+everything else is an npm package you opt into, the same way Hexo does it:
 
-| Plugin | What it does | Config |
-| --- | --- | --- |
-| `sitemap` | `sitemap.xml` + `robots.txt` | `site.url` |
-| `rss` | RSS 2.0 with full post bodies | `site.rss.limit` |
-| `feed-json` | JSON Feed 1.1 | `feedJson.limit` |
-| `search` | search index + Ctrl/⌘+K panel | `search.maxChars` |
-| `seo` | canonical / Open Graph / Twitter Card / JSON-LD | `seo.image`, `seo.twitter`, `seo.jsonLd` |
-| `related` | related posts (tag 3 / category 2 / series 3) | `related.limit`, `related.minScore` |
-| `llms` | `llms.txt` + `llms-full.txt` | `llms.full`, `llms.maxItems` |
-| `minify` | HTML minify (skipped in dev) | `minify.aggressive` |
-| `reading-stats` | reading time and site stats | — |
+```bash
+npm i -D xfm-plugin-sitemap xfm-plugin-rss xfm-plugin-search
+```
 
-## Plugin example
+Any `xfm-plugin-*` entry in your site's `package.json` is loaded automatically — there is
+nothing to configure. Restart `xfm dev` after installing, since plugins are resolved at startup.
+
+Prefer to be explicit (to pin the load order, or to mix in a local file):
 
 ```js
-// plugins/search-index.js — drop into plugins/ and it runs
-module.exports = () => ({
-  name: 'search-index',
-  afterBuild(site) {
-    const index = site.documents.map(d => ({
-      title: d.title, url: d.url,
-      text: d.html.replace(/<[^>]+>/g, ' ').slice(0, 800),
-    }));
-    return [{ path: 'search.json', contents: JSON.stringify(index) }];
-  },
-});
+// xfm.config.mjs
+export default {
+  plugins: ['sitemap', 'rss', './plugins/my-plugin.js'],
+};
+```
+
+A short name resolves to `xfm-plugin-<name>`, a path points at a file inside your site.
+A plugin that is referenced but not installed fails loudly, with the exact `npm i` command.
+
+### Official plugins
+
+| Package | What it writes | Options |
+| --- | --- | --- |
+| [`xfm-plugin-sitemap`](./packages/sitemap) | `sitemap.xml`, `robots.txt` | — (`site.url` makes `<loc>` absolute) |
+| [`xfm-plugin-rss`](./packages/rss) | `feed.xml` (RSS 2.0, full bodies) | `site.rss.limit` |
+| [`xfm-plugin-feed-json`](./packages/feed-json) | `feed.json` (JSON Feed 1.1) | `feedJson.path`, `feedJson.limit` |
+| [`xfm-plugin-search`](./packages/search) | `search.json` + Ctrl/⌘+K panel | `search.path`, `search.maxChars`, `search.hint` |
+| [`xfm-plugin-seo`](./packages/seo) | canonical, Open Graph, Twitter Card, JSON-LD | `seo.image`, `seo.twitter`, `seo.jsonLd` |
+| [`xfm-plugin-related`](./packages/related) | related posts → `page.data.related` | `related.limit`, `related.minScore` |
+| [`xfm-plugin-llms`](./packages/llms) | `llms.txt`, `llms-full.txt` | `llms.full`, `llms.maxItems` |
+| [`xfm-plugin-minify`](./packages/minify) | smaller HTML (production only) | `minify.enabled`, `minify.aggressive` |
+| [`xfm-plugin-reading-stats`](./packages/reading-stats) | `stats.json`, `site.stats` | — |
+
+Every package has its own README with install, options and output.
+
+`related` scores posts by shared tags (3), category (2) and series (3) and hands the result to
+the template as `page.data.related` before rendering, so the worker pool stays active. Both
+themes render a related block whenever the key exists. `seo` never duplicates a canonical /
+`og:*` tag that your template already writes. `minify` leaves `<pre>`, `<code>`, `<textarea>`,
+`<script>` and `<style>` untouched and is skipped entirely in dev.
+
+### Per-page switches (front-matter)
+
+| Front-matter | Effect |
+| --- | --- |
+| `sitemap: false` | keep the page out of `sitemap.xml` |
+| `rss: false` | keep the page out of `feed.xml` and `feed.json` |
+| `search: false` | keep the page out of the search index |
+| `llms: false` | keep the page out of `llms.txt` |
+| `related: false` / `related: [url, ...]` | disable recommendations / pin a manual list |
+| `seo: false`, `noindex: true`, `image`, `canonical` | SEO plugin behaviour |
+
+The themes only test `site.search` and `page.data.related`, so uninstalling those two plugins
+degrades gracefully instead of breaking the build.
+
+## Writing a plugin
+
+A plugin is a module exporting `(site) => ({ name, ...hooks })`. Publish it as
+`xfm-plugin-<name>` and install it like any dependency, or drop it into `plugins/` inside the
+site. `site.helpers` exposes the URL and text utilities the official plugins use, so a plugin
+never has to reach into the generator internals:
+
+```js
+// plugins/reading-index.js — loaded automatically from plugins/
+module.exports = (site) => {
+  const { plainText, absoluteUrl } = site.helpers;
+  return {
+    name: 'reading-index',
+    afterBuild(site) {
+      const index = site.documents.map((d) => ({
+        title: d.title,
+        url: absoluteUrl(site.config.site, d.url),
+        text: plainText(d.html).slice(0, 800),
+      }));
+      return [{ path: 'index.json', contents: JSON.stringify(index) }];
+    },
+  };
+};
 ```
 
 ## Theme structure
@@ -212,13 +268,13 @@ Template context: `site.*` (site config and aggregated data), `page.*` (current 
 xfm/
 ├── bin/xfm.js         # CLI (build/dev/new/create/clean/info)
 ├── lib/engine/         # markdown / template / render / frontmatter / theme / plugins / site / worker / server / config
-├── lib/plugins/        # built-in plugins (sitemap / rss / feed-json / search / seo / related / llms / minify / reading-stats)
 ├── lib/cli/scaffold.js # create scaffolding
+├── packages/           # official plugins, published separately as xfm-plugin-*
 ├── themes/default/     # blog theme (light/dark)
 ├── themes/docs/        # docs theme (sidebar navigation)
 ├── examples/blog/      # buildable example site
 ├── bench/bench.js      # benchmark (per-stage timings)
-└── test/run.js         # 95 tests (zero dependencies)
+└── test/run.js         # 111 tests (zero dependencies)
 ```
 
 ## Deployment
@@ -227,12 +283,12 @@ xfm/
 
 This repository ships a ready-made GitHub Pages pipeline: `.github/workflows/pages.yml` runs the test suite, builds `examples/blog` and deploys the artifact on every push to `main` that touches the site, the engine or the themes. To turn it on, set **Settings → Pages → Build and deployment → Source** to **GitHub Actions** once.
 
-> **Project pages need a path prefix.** Page URLs are generated as root-absolute (`/posts/x/`), and `site.base` does not prefix them yet, so serving from `https://<user>.github.io/<repo>/` would 404 on CSS and internal links. The workflow runs `scripts/pages-base.js` to add that prefix at build time. Once `site.base` is honoured by URL generation, drop the step and set `base` in the config instead.
+> **Project pages need a path prefix.** Page URLs are root-absolute (`/posts/x/`); the workflow injects `SITE_BASE=/<repo>/` and the engine's `site.base` support prefixes every link, `sitemap.xml` and `search.json` at build time. Fork it, set the same variable, and the same pipeline deploys your own copy.
 
 ## Local development
 
 ```bash
-npm run test           # 95 tests
+npm test               # 111 tests
 npm run bench          # 1,000-page benchmark (per-stage timings)
 npm run build:example  # build the example site
 npm run dev            # dev-server the example site

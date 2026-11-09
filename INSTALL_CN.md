@@ -253,10 +253,10 @@ export default {
   contentDir: 'content',
   outDir: 'dist',
   theme: 'default',                // 内置主题：default | docs；也可填本地路径
-  plugins: [
+  plugins: [                        // 可选：装好的 xfm-plugin-* 依赖本来就会自动加载
     'sitemap',
     'rss',
-    './plugins/my-plugin.js',      // 本地插件
+    './plugins/my-plugin.js',       // 本地插件
   ],
   workers: 0,                      // 0 = 自动；渲染进程数
   server: { port: 4173 },          // dev 端口

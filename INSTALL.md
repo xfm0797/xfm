@@ -253,7 +253,7 @@ export default {
   contentDir: 'content',
   outDir: 'dist',
   theme: 'default',                // built-in: default | docs; or a local path
-  plugins: [
+  plugins: [                       // optional: installed xfm-plugin-* deps load anyway
     'sitemap',
     'rss',
     './plugins/my-plugin.js',      // local plugin

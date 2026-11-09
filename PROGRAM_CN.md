@@ -40,12 +40,13 @@ xfm-0.3.0/
 │   │   ├── render.js      渲染管线（主线程与 worker 共用）
 │   │   ├── worker.js      worker 线程渲染
 │   │   ├── theme.js       主题加载与继承
-│   │   ├── plugins.js     插件系统（6 个钩子）
+│   │   ├── plugins.js     插件系统（6 个钩子 + package.json 自动发现）
+│   │   ├── helpers.js     插件工具集（site.helpers：URL / 纯文本）
 │   │   ├── frontmatter.js YAML 子集解析
 │   │   ├── config.js      配置加载与深合并
 │   │   ├── url.js         site.base 前缀（HTML / sitemap / RSS 统一补）
 │   │   └── server.js      开发服务器（SSE 热更新）
-│   └── plugins/           内置插件：sitemap / rss / feed-json / search / seo / related / llms / minify / reading-stats
+├── packages/              官方插件（各自独立发布为 xfm-plugin-*，内核不带）
 ├── themes/
 │   ├── default/           博客主题
 │   └── docs/              文档主题（左侧分组侧栏）
