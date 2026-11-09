@@ -7,6 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.3] - 2026-11-09
+
+### Changed
+
+- `xfm build` and `xfm dev` print the plugins that actually loaded, plus the files they
+  emitted (`sitemap.xml, robots.txt, feed.xml, …`). Now that plugins are external packages,
+  "installed but not picked up" has to be visible without opening the config.
+
 ## [0.4.2] - 2026-11-09
 
 ### Breaking

@@ -91,12 +91,16 @@ async function cmdBuild(args) {
   const ms = performance.now() - t0;
   const size = await dirSize(outDir);
   console.log(`  ${paint(C.green, '✓')} 页面      ${paint(C.bold, String(site.pages.length))} 个`);
-  const extraFiles = site.stats.extraOutputs;
-  console.log(
-    `  ${paint(C.green, '✓')} 附加产物  ${
-      extraFiles ? `${extraFiles} 个（sitemap / rss / 等）` : paint(C.dim, '无（插件产出，装了插件才有）')
-    }`
-  );
+  // 插件是外部包，装没装、生效没生效要看得见
+  const loaded = site.plugins.names();
+  console.log(`  ${paint(C.green, '✓')} 插件      ${loaded.length ? loaded.join(', ') : paint(C.dim, '无（npm i -D xfm-plugin-xxx 按需安装）')}`);
+  const extras = (site.extraFiles || []).map((f) => f.path);
+  const extraLabel = !extras.length
+    ? paint(C.dim, '无（插件产出，装了插件才有）')
+    : extras.length <= 6
+      ? extras.join(', ')
+      : `${extras.length} 个（${extras.slice(0, 4).join(', ')} …）`;
+  console.log(`  ${paint(C.green, '✓')} 附加产物  ${extraLabel}`);
   console.log(`  ${paint(C.green, '✓')} 静态资源  ${site.stats.assets} 个`);
   console.log(`  ${paint(C.green, '✓')} 输出目录  ${paint(C.dim, path.relative(process.cwd(), outDir) || outDir)}（共 ${human(size.total)}）`);
   if (site.stats.workers) console.log(`  ${paint(C.green, '✓')} 并行渲染  ${site.stats.workers} 个 worker 线程`);
@@ -119,6 +123,8 @@ async function cmdDev(args) {
   const dev = new DevServer(root, cfg);
   await dev.start();
   console.log(`  ${paint(C.green, '✓')} 首次构建 ${(performance.now() - t0).toFixed(0)}ms，${dev.site.pages.length} 个页面`);
+  const loaded = dev.site.plugins.names();
+  console.log(`  ${paint(C.green, '✓')} 插件      ${loaded.length ? loaded.join(', ') : paint(C.dim, '无（npm i -D xfm-plugin-xxx 按需安装）')}`);
   console.log(`  ${paint(C.green, '➜')} 本地访问  ${paint(C.cyan, dev.url)}`);
   console.log(`  ${paint(C.dim, '  监听 content/ themes/ plugins/ 变更，保存即刷新')}\n`);
 
