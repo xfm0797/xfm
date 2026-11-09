@@ -912,8 +912,9 @@ async function testExtras() {
     nav: [{ title: '首页', url: '/' }, { title: '归档', url: '/archives/' }],
   },
   theme: 'themes/default',
-  plugins: ['sitemap', 'rss', 'search'],
+  plugins: ['sitemap', 'rss', 'feed-json', 'search', 'seo', 'related', 'llms'],
   pagination: { perPage: 2 },
+  related: { limit: 2 },
   defaults: { layout: 'post.html' },
 };
 `
@@ -922,7 +923,7 @@ async function testExtras() {
     for (let i = 1; i <= 5; i++) {
       write(
         `posts/p${i}.md`,
-        `---\ntitle: 文章 ${i}\ndate: 2026-03-0${i}\ntags: [标签${i}]\n---\n\n## 第 ${i} 节\n\n正文 ${i} 号，[外链](https://example.com/x${i})。\n`
+        `---\ntitle: 文章 ${i}\ndate: 2026-03-0${i}\ntags: [标签${i}, 共同]\n---\n\n## 第 ${i} 节\n\n正文 ${i} 号，[外链](https://example.com/x${i})。\n`
       );
     }
     write('hidden.md', '---\ntitle: 不参与搜索\ntype: page\ndate: 2026-01-01\nsearch: false\n---\n\n这页不进索引。\n');
@@ -1003,7 +1004,12 @@ async function testExtras() {
       try {
         execFileSync(process.execPath, [bin, 'create', off, '--template=blog', '--force'], { stdio: 'pipe' });
         const cfg = path.join(off, 'xfm.config.mjs');
-        fs.writeFileSync(cfg, fs.readFileSync(cfg, 'utf8').replace("'sitemap', 'rss', 'search'", "'sitemap', 'rss'"));
+        fs.writeFileSync(
+          cfg,
+          fs
+            .readFileSync(cfg, 'utf8')
+            .replace(/plugins:[^\n]*/, "plugins: ['sitemap', 'rss'],")
+        );
         execFileSync(process.execPath, [bin, 'build', off], { stdio: 'pipe' });
         assert(!fs.existsSync(path.join(off, 'dist', 'search.json')), '未启用插件却生成了索引');
         const page = fs.readFileSync(path.join(off, 'dist', 'index.html'), 'utf8');
@@ -1011,6 +1017,67 @@ async function testExtras() {
       } finally {
         fs.rmSync(off, { recursive: true, force: true });
       }
+    });
+
+    await test('SEO 元信息按页注入且带 base 前缀', () => {
+      const html = fs.readFileSync(path.join(root, 'dist', 'posts', 'p1', 'index.html'), 'utf8');
+      assert(html.includes('<link rel="canonical" href="https://example.com/blog/posts/p1/">'), 'canonical 不对');
+      assert(html.includes('property="og:type" content="article"'), '缺 og:type');
+      assert(html.includes('property="og:url" content="https://example.com/blog/posts/p1/"'), 'og:url 不对');
+      assert(html.includes('name="twitter:card"'), '缺 twitter card');
+      assert(html.includes('"@type":"Article"'), '缺 Article 结构化数据');
+
+      const home = fs.readFileSync(path.join(root, 'dist', 'index.html'), 'utf8');
+      assert(home.includes('"@type":"WebSite"'), '首页缺 WebSite 结构化数据');
+    });
+
+    await test('相关文章按标签推荐且排除自身', () => {
+      const html = fs.readFileSync(path.join(root, 'dist', 'posts', 'p1', 'index.html'), 'utf8');
+      const m = html.match(/<section class="related">[\s\S]*?<\/section>/);
+      assert(m, '缺相关文章区块');
+      assert(!m[0].includes('href="/blog/posts/p1/"'), '推荐了自己');
+      assert(/href="\/blog\/posts\/p[2-5]\/"/.test(m[0]), '没有推荐同标签文章');
+    });
+
+    await test('JSON Feed 与 llms.txt 产物', () => {
+      const feed = JSON.parse(fs.readFileSync(path.join(root, 'dist', 'feed.json'), 'utf8'));
+      assert(feed.version === 'https://jsonfeed.org/version/1.1', 'JSON Feed 版本不对');
+      assert(feed.items.length === 5, '条目数不对: ' + feed.items.length);
+      assert(feed.items[0].url.startsWith('https://example.com/blog/posts/'), '条目地址缺域名或前缀');
+
+      const llms = fs.readFileSync(path.join(root, 'dist', 'llms.txt'), 'utf8');
+      assert(llms.startsWith('# 扩展站'), 'llms.txt 缺站点标题');
+      assert(llms.includes('https://example.com/blog/posts/p1/'), 'llms.txt 缺文章地址');
+      assert(fs.existsSync(path.join(root, 'dist', 'llms-full.txt')), '缺 llms-full.txt');
+    });
+
+    await test('dev 模式下插件产物按需生成并可访问', async () => {
+      const { DevServer } = require('../lib/engine/server');
+      const dev = new DevServer(root, { port: 0 });
+      await dev.start();
+      try {
+        const res = await fetch(dev.url + 'blog/search.json');
+        assert(res.status === 200, 'dev 下 search.json 不可访问：' + res.status);
+        const json = await res.json();
+        assert(Array.isArray(json.items) && json.items.length > 0, 'dev 搜索索引为空');
+
+        const feed = await fetch(dev.url + 'blog/feed.json');
+        assert(feed.status === 200, 'dev 下 feed.json 不可访问：' + feed.status);
+      } finally {
+        await dev.close();
+      }
+    });
+
+    await test('minify 压缩空白并保护 pre/code', () => {
+      const plugin = require('../lib/plugins/minify.js')({
+        config: { minify: {} },
+        mode: 'production',
+      });
+      const src = '<html>\n  <!-- 注释 -->\n  <body>\n\n\n    <p>文本</p>\n    <pre>\n  a\n\n\n  b\n</pre>\n  </body>\n</html>';
+      const out = plugin.transformHtml(src);
+      assert(!out.includes('<!--'), '注释未删除');
+      assert(!/\n\s*\n/.test(out.replace(/\n?<pre>[\s\S]*?<\/pre>/g, '')), 'pre 之外仍有连续空行');
+      assert(out.includes('<pre>\n  a\n\n\n  b\n</pre>'), 'pre 内容被改动');
     });
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
