@@ -24,6 +24,8 @@ function genSite() {
   theme: 'default',
   plugins: ['sitemap', 'rss', 'reading-stats'],
   defaults: { layout: 'post.html' },
+  // 基准跟踪的是引擎本身的吞吐：关掉分页，避免 1000 篇额外派生 112 个 /page/N/
+  pagination: { enabled: false },
 };\n`);
   fs.writeFileSync(path.join(dir, 'content/index.md'), '---\ntitle: 首页\nlayout: index.html\n---\n');
 
