@@ -12,9 +12,7 @@
       {% include "post-list.html" %}
     </div>
 
-    {% if site.posts.length > 9 %}
-    <p class="more-link"><a href="/archives/">查看全部 {{ site.posts.length }} 篇文章 →</a></p>
-    {% endif %}
+    {% include "pager.html" %}
   </div>
 
   <aside class="home-side">

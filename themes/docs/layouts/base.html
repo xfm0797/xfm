@@ -12,7 +12,9 @@
     <div class="wrap-wide header-inner">
       <a class="brand" href="/">{{ site.title }}</a>
       <nav class="nav">{% for item in site.nav %}<a href="{{ item.url }}">{{ item.title }}</a>
-      {% endfor %}</nav>
+        {% endfor %}
+        {% if site.search %}<button class="nav-search" type="button" data-search-open aria-label="搜索文档" title="搜索（Ctrl+K）"><span class="nav-search-text">搜索</span><kbd>/</kbd></button>{% endif %}
+      </nav>
     </div>
   </header>
   <div class="wrap-wide docs-body">
@@ -32,5 +34,7 @@
       <footer class="site-footer"><p>{{ site.copyright || ('© ' + site.title) }}</p><p class="powered">由 xfm 构建</p></footer>
     </main>
   </div>
+  <script src="{{ site.assets }}ux.js" defer></script>
+  {% if site.search %}<script src="{{ site.assets }}search.js" defer data-index="{{ site.search.url }}"></script>{% endif %}
 </body>
 </html>
