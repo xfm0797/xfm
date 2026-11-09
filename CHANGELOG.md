@@ -4,6 +4,38 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-11-09
+
+### Added
+
+- Built-in site search: the new `search` plugin compiles every content page into
+  a single `search.json` (title / description / tags / first N chars of body,
+  `search.maxChars` to tune), and both themes ship a zero-dependency
+  Ctrl/⌘+K (or `/`) search panel that lazily fetches the index and filters it
+  client-side. Excluded by default: home, taxonomy, index and pagination pages;
+  a page opts out with `search: false` in front-matter.
+- Listing pagination: `pagination: { perPage }` splits the post list into real
+  static pages at `/page/2/`, `/page/3/`, ... with a pager (prev / numbered /
+  next, gaps ellipsized). Page 1 is the home page itself, so templates read the
+  same `pagination` structure everywhere. Pagination is skipped when the home
+  layout does not render a post list (e.g. the docs theme), and paged pages
+  stay out of RSS, nav groups, prev/next and the search index.
+- Reading-experience polish shipped in both themes via a shared `ux.js`:
+  copy button on code blocks, click-to-zoom images, a reading progress bar on
+  posts, and external links opened in a new tab with `noopener noreferrer`.
+  Markdown images now render with `loading="lazy" decoding="async"`.
+
+### Changed
+
+- `site.base` is now applied by the engine itself: after rendering, every
+  root-absolute `href`/`src` in the page HTML is prefixed once (templates,
+  Markdown links and raw HTML all covered), sitemap/RSS/search index URLs are
+  joined through the same helper, and the dev server serves the site under the
+  configured prefix. Output paths on disk are unchanged. The build-time
+  patcher `scripts/pages-base.js` is gone; the Pages workflow passes
+  `SITE_BASE` to the build instead. Note: `robots.txt` now emits the
+  `Sitemap:` line only when `site.url` is configured.
+
 ## [0.3.0] - 2026-11-04
 
 ### Added

@@ -61,7 +61,9 @@ xfm build            # 生产构建
 
 - **主题**：`{% extend %}` / `{% block %}` 模板继承、`{% include %}` 片段、`{# 注释 #}`、CSS 变量深浅色主题；内置 `default`（博客）与 `docs`（侧栏文档）两套主题。
 - **插件**：五个钩子（`extendContext` / `markdown` / `transformHtml` / `afterBuild` / `configureServer`），放进 `plugins/` 目录自动加载；内置 sitemap、RSS、阅读统计三个插件。
-- **内容**：YAML front-matter、草稿、标签/分类/系列聚合、自动 prev/next、按 weight 排序、`.md` 相对链接自动解析。每个标签/分类/系列都会生成独立页面（`/tags/<name>/`、`/categories/<name>/`、`/series/<name>/`），URL 编码的路径会还原成可读的目录名。默认主题还带分类索引页（`/categories/`）与按年归档页（`/archives/`），由 `indexes` 配置项驱动，主题提供对应布局时才会生成。文章页右侧目录会跟随滚动高亮当前小节。
+- **内容**：YAML front-matter、草稿、标签/分类/系列聚合、自动 prev/next、按 weight 排序、`.md` 相对链接自动解析。每个标签/分类/系列都会生成独立页面（`/tags/<name>/`、`/categories/<name>/`、`/series/<name>/`），URL 编码的路径会还原成可读的目录名。默认主题还带分类索引页（`/categories/`）与按年归档页（`/archives/`），由 `indexes` 配置项驱动，主题提供对应布局时才会生成。文章页右侧目录会跟随滚动高亮当前小节。列表分页生成真实静态页（`/page/2/`…，`pagination` 配置驱动）。
+- **搜索与阅读**：内置 `search` 插件生成 `search.json` 索引，主题带 Ctrl/⌘+K 搜索面板（纯前端筛选、零依赖）；代码块复制、图片点击放大、阅读进度条、外链新窗口均为主题自带的小交互。
+- **子路径部署**：`site.base`（如 `/blog/`）由引擎在渲染出口统一补前缀，模板/Markdown/sitemap/RSS 全部生效，dev 预览同样按前缀访问。
 - **开发体验**：`xfm dev` 内存构建 + SSE 热更新（保持滚动位置）、CSS 单独热替换、404 页列出可用路由。
 - **易迁移**：模板语法兼容 Nunjucks/Liquid 习惯，配置文件支持 `.mjs/.js/.json`。
 
@@ -93,13 +95,14 @@ export default {
     title: 'XFM Notes',
     description: '关于静态站点与前端的笔记',
     lang: 'zh-CN',
-    base: '/',
+    base: '/',                       // 子路径部署示例：'/blog/'，所有站内链接自动加前缀
     url: 'https://example.com',      // 供 sitemap/RSS 使用
     nav: [{ title: '文章', url: '/' }],
   },
   theme: 'default',                  // 主题名或路径
-  plugins: ['sitemap', 'rss'],       // 内置插件，也可写路径
+  plugins: ['sitemap', 'rss', 'search'], // 内置插件，也可写路径
   defaults: { layout: 'post.html' },
+  pagination: { perPage: 9 },        // 列表分页：/page/2/、/page/3/…
   indexes: {                         // 分类索引页 / 归档页
     categories: { enabled: true, url: '/categories/' },
     archives: { enabled: true, url: '/archives/' },

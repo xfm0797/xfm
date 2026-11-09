@@ -28,7 +28,7 @@ Or reference it by path with `npm link` (handy while debugging).
 ## Directory layout
 
 ```
-xfm-0.3.0/
+xfm-0.4.0/
 ├── bin/xfm.js            CLI entry (build / dev / new / create / clean / info)
 ├── lib/
 │   ├── index.js           programmatic API (build / createSite)
@@ -44,7 +44,7 @@ xfm-0.3.0/
 │   │   ├── frontmatter.js YAML subset parser
 │   │   ├── config.js      config loading and deep merge
 │   │   └── server.js      dev server (SSE hot reload)
-│   └── plugins/           built-in plugins: sitemap / rss / reading-stats
+│   └── plugins/           built-in plugins: sitemap / rss / reading-stats / search
 ├── themes/
 │   ├── default/           blog theme
 │   └── docs/              docs theme (grouped left sidebar)

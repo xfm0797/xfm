@@ -95,13 +95,14 @@ export default {
     title: 'XFM Notes',
     description: 'Notes on static sites and the frontend',
     lang: 'en',
-    base: '/',
-    url: 'https://example.com',      // used by sitemap/RSS
+    base: '/',                       // sub-path deploy, e.g. '/blog/' prefixes every link
+    url: 'https://example.com',      // origin, used by sitemap/RSS
     nav: [{ title: 'Posts', url: '/' }],
   },
   theme: 'default',                  // theme name or path
-  plugins: ['sitemap', 'rss'],       // built-in names or paths
+  plugins: ['sitemap', 'rss', 'search'], // built-in names or paths
   defaults: { layout: 'post.html' },
+  pagination: { perPage: 9 },        // listing pages at /page/2/, /page/3/, ...
   indexes: {                         // category index / archive pages
     categories: { enabled: true, url: '/categories/' },
     archives: { enabled: true, url: '/archives/' },
