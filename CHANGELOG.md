@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.5] - 2026-11-09
+
+### Changed
+
+- `xfm create` output: no more `cd .` when scaffolding into the current directory, and plugins
+  already present in `package.json` are listed instead of repeating the install hint.
+
 ## [0.4.4] - 2026-11-09
 
 ### Fixed
