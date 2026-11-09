@@ -20,7 +20,7 @@ export default {
   theme: 'themes/default',
   // 插件不随内核发布：npm i -D xfm-plugin-<name> 装上即自动加载（package.json 依赖扫描），
   // 这里写短名只是为了固定加载顺序；写成 './plugins/x.js' 则是站点内的本地插件。
-  plugins: ['sitemap', 'rss', 'reading-stats', 'feed-json', 'search', 'seo', 'related', 'llms', 'minify'],
+  plugins: ['sitemap', 'rss', 'reading-stats', 'feed-json', 'search', 'seo', 'related', 'llms', 'minify', 'pwa', 'deadlinks'],
   defaults: {
     layout: 'post.html',
   },

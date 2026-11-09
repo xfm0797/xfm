@@ -1,0 +1,41 @@
+{
+  "name": "xfm-plugin-redirect",
+  "version": "0.4.2",
+  "description": "Alias and redirect pages for xfmpress — old URLs never 404",
+  "type": "commonjs",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "xfm",
+    "xfmpress",
+    "xfmpress-plugin",
+    "static-site-generator",
+    "plugin",
+    "redirect"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xfm0797/xfm.git",
+    "directory": "packages/redirect"
+  },
+  "bugs": {
+    "url": "https://github.com/xfm0797/xfm/issues"
+  },
+  "homepage": "https://github.com/xfm0797/xfm/tree/main/packages/redirect#readme",
+  "author": "xfm0797",
+  "license": "MIT",
+  "peerDependencies": {
+    "xfmpress": ">=0.4.2"
+  },
+  "peerDependenciesMeta": {
+    "xfmpress": {
+      "optional": true
+    }
+  }
+}

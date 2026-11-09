@@ -1168,6 +1168,148 @@ async function testExtras() {
       assert(!/\n\s*\n/.test(out.replace(/\n?<pre>[\s\S]*?<\/pre>/g, '')), 'pre 之外仍有连续空行');
       assert(out.includes('<pre>\n  a\n\n\n  b\n</pre>'), 'pre 内容被改动');
     });
+
+    // ---- 0.4.6 新增的六个插件（都用假 site 做单元测试，不依赖示例站） ----
+    await test('analytics 注入统计脚本且 dev 下默认跳过', () => {
+      const helpers = require('../lib/engine/helpers');
+      const make = (mode, cfg) =>
+        require('xfm-plugin-analytics')({ config: { analytics: cfg }, mode, helpers });
+      const cfg = { provider: 'plausible', plausible: { domain: 'example.com' } };
+
+      const prod = make('production', cfg);
+      const html = prod.transformHtml('<html><body><p>x</p></body></html>', { page: { url: '/a/', data: {} } });
+      assert(html.includes('src="https://plausible.io/js/script.js"'), '未注入 plausible');
+      assert(html.includes('data-domain="example.com"'), '缺 data-domain');
+      assert(html.indexOf('plausible') < html.indexOf('</body>'), '注入位置不在 body 末尾');
+
+      const dev = make('development', cfg);
+      assert(!dev.transformHtml('<html><body></body></html>', { page: { url: '/', data: {} } }).includes('plausible'), 'dev 下不该注入');
+
+      const off = prod.transformHtml('<html><body></body></html>', { page: { url: '/x/', data: { analytics: false } } });
+      assert(!off.includes('plausible'), 'front-matter analytics:false 未生效');
+    });
+
+    await test('giscus 只给文章页插评论区', () => {
+      const plugin = require('xfm-plugin-giscus')({
+        config: { comments: { repo: 'o/r', repoId: 'R_x', category: 'General', categoryId: 'D_x' } },
+        mode: 'production',
+        helpers: require('../lib/engine/helpers'),
+      });
+
+      const post = plugin.transformHtml('<article><p>x</p></article></body>', {
+        page: { url: '/p/', date: '2026-01-01', data: {} },
+      });
+      assert(post.includes('giscus.app/client.js'), '文章页未插入评论区');
+      assert(post.indexOf('data-xfm-comments') < post.indexOf('</article>'), '没插在文章内');
+
+      const home = plugin.transformHtml('<main>x</main></body>', { page: { url: '/', date: '', data: {} } });
+      assert(!home.includes('giscus'), '首页不该有评论区');
+
+      const off = plugin.transformHtml('<article>x</article></body>', {
+        page: { url: '/p/', date: '2026-01-01', data: { comments: false } },
+      });
+      assert(!off.includes('giscus'), 'front-matter comments:false 未生效');
+    });
+
+    await test('redirect 在旧地址生成跳转页', () => {
+      const helpers = require('../lib/engine/helpers');
+      const site = {
+        mode: 'production',
+        helpers,
+        config: { site: { base: '/blog/', lang: 'zh-CN' }, redirects: { '/old/': '/new/' } },
+        pages: [{ url: '/new/', data: {} }, { url: '/p/', data: { redirect_from: ['/2020/01/x.html'] } }],
+        extraFiles: [],
+      };
+      const files = require('xfm-plugin-redirect')(site).afterBuild(site);
+      const paths = files.map((f) => f.path).sort();
+      assert(paths.includes('old/index.html'), '缺目录形式跳转页：' + paths.join(','));
+      assert(paths.includes('2020/01/x.html'), '缺 .html 形式跳转页');
+
+      const html = files.find((f) => f.path === 'old/index.html').contents;
+      assert(html.includes('url=/blog/new/'), '跳转地址没带 base');
+      assert(html.includes('noindex'), '跳转页缺 noindex');
+    });
+
+    await test('pwa 产出 manifest / sw / 离线页', async () => {
+      const helpers = require('../lib/engine/helpers');
+      const site = {
+        root,
+        mode: 'production',
+        helpers,
+        theme: null,
+        config: { site: { title: '测试站', base: '/blog/' }, pwa: {}, publicDir: 'public' },
+        pages: [{ url: '/' }],
+        assets: async () => ({ themeAssets: [{ dest: 'assets/a.css' }], publicFiles: [] }),
+        extraFiles: [],
+      };
+      const pwa = require('xfm-plugin-pwa')(site);
+      const files = await pwa.afterBuild(site);
+      const byName = new Map(files.map((f) => [f.path, f.contents]));
+
+      const manifest = JSON.parse(byName.get('manifest.webmanifest'));
+      assert(manifest.start_url === '/blog/', 'start_url 没带 base：' + manifest.start_url);
+      assert(manifest.icons[0].src === '/blog/icon.svg', '图标路径没带 base');
+      assert(byName.get('sw.js').includes('"/blog/assets/a.css"'), 'sw 预缓存缺资源');
+      assert(byName.get('offline.html').includes('/blog/'), '离线页缺首页链接');
+      assert(byName.get('icon.svg').includes('<svg'), '缺生成的图标');
+
+      const html = pwa.transformHtml('<html><head></head><body></body></html>', { page: { url: '/', data: {} } });
+      assert(html.includes('href="/blog/manifest.webmanifest"'), '未注入 manifest 链接');
+      assert(html.includes('serviceWorker.register("/blog/sw.js")'), '未注册 service worker');
+    });
+
+    await test('image-size 读取 PNG 头补 width/height', () => {
+      const helpers = require('../lib/engine/helpers');
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-img-'));
+      try {
+        fs.mkdirSync(path.join(dir, 'public', 'img'), { recursive: true });
+        fs.writeFileSync(
+          path.join(dir, 'public', 'img', 'a.png'),
+          Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+            'base64'
+          )
+        );
+        const site = { root: dir, mode: 'production', helpers, theme: null, config: { site: {}, imageSize: {} } };
+        const plugin = require('xfm-plugin-image-size')(site);
+
+        const out = plugin.transformHtml('<p><img src="/img/a.png" alt="a"></p>', { page: { url: '/', data: {} } });
+        assert(out.includes('width="1"'), '缺 width：' + out);
+        assert(out.includes('height="1"'), '缺 height：' + out);
+
+        const ext = '<img src="https://cdn.example.com/a.png">';
+        assert(plugin.transformHtml(ext, { page: { url: '/', data: {} } }) === ext, '外链不该被处理');
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    await test('deadlinks 报出站内死链', async () => {
+      const helpers = require('../lib/engine/helpers');
+      const site = {
+        mode: 'production',
+        helpers,
+        config: { site: { base: '/' }, deadlinks: {} },
+        pages: [
+          { url: '/a/', html: '<a href="/b/">ok</a><a href="/missing/">bad</a><a href="https://x.com/">ext</a>' },
+          { url: '/b/', html: '' },
+        ],
+        extraFiles: [],
+        assets: async () => ({ themeAssets: [], publicFiles: [] }),
+      };
+
+      const warn = console.warn;
+      console.warn = () => {};
+      let files;
+      try {
+        files = await require('xfm-plugin-deadlinks')(site).afterBuild(site);
+      } finally {
+        console.warn = warn;
+      }
+      const json = JSON.parse(files[0].contents);
+      assert(json.total === 1, '死链数量不对：' + json.total);
+      assert(json.links[0].href === '/missing/', '死链地址不对：' + json.links[0].href);
+    });
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
