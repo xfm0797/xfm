@@ -61,7 +61,7 @@ xfm build            # 生产构建
 ## 特性
 
 - **主题**：`{% extend %}` / `{% block %}` 模板继承、`{% include %}` 片段、`{# 注释 #}`、CSS 变量深浅色主题；内置 `default`（博客）与 `docs`（侧栏文档）两套主题。
-- **插件**：六个钩子（`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`）。**内核不带任何插件** —— 像 Hexo 一样从 npm 装（`npm i -D xfm-plugin-rss`），装了就自动生效；9 个官方插件在 [`packages/`](./packages) 里独立发布。
+- **插件**：六个钩子（`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`）。**内核不带任何插件** —— 像 Hexo 一样从 npm 装（`npm i -D xfm-plugin-rss`），装了就自动生效；15 个官方插件在 [`packages/`](./packages) 里独立发布。
 - **内容**：YAML front-matter、草稿、标签/分类/系列聚合、自动 prev/next、按 weight 排序、`.md` 相对链接自动解析。每个标签/分类/系列都会生成独立页面（`/tags/<name>/`、`/categories/<name>/`、`/series/<name>/`），URL 编码的路径会还原成可读的目录名。默认主题还带分类索引页（`/categories/`）与按年归档页（`/archives/`），由 `indexes` 配置项驱动，主题提供对应布局时才会生成。文章页右侧目录会跟随滚动高亮当前小节。列表分页生成真实静态页（`/page/2/`…，`pagination` 配置驱动）。
 - **搜索与阅读**：内置 `search` 插件生成 `search.json` 索引，主题带 Ctrl/⌘+K 搜索面板（纯前端筛选、零依赖）；代码块复制、图片点击放大、阅读进度条、外链新窗口均为主题自带的小交互。
 - **SEO 与 AI 友好**：`seo` 插件按页注入 canonical / Open Graph / Twitter Card / JSON-LD；`llms` 生成 `llms.txt` 与 `llms-full.txt`（按 llmstxt.org 约定）；`feed-json` 提供 JSON Feed 1.1。
@@ -191,21 +191,36 @@ export default {
 
 ### 官方插件
 
+**站点产物** —— 给爬虫和客户端读的文件：
+
 | 包名 | 产物 | 主要配置 |
 | --- | --- | --- |
 | [`xfm-plugin-sitemap`](./packages/sitemap) | `sitemap.xml`、`robots.txt` | —（配了 `site.url` 才输出绝对 `<loc>`） |
 | [`xfm-plugin-rss`](./packages/rss) | `feed.xml`（RSS 2.0，正文全文） | `site.rss.limit` |
 | [`xfm-plugin-feed-json`](./packages/feed-json) | `feed.json`（JSON Feed 1.1） | `feedJson.path`、`feedJson.limit` |
+| [`xfm-plugin-llms`](./packages/llms) | `llms.txt`、`llms-full.txt` | `llms.full`、`llms.maxItems` |
 | [`xfm-plugin-search`](./packages/search) | `search.json` + Ctrl/⌘+K 面板 | `search.path`、`search.maxChars`、`search.hint` |
+| [`xfm-plugin-pwa`](./packages/pwa) | `manifest.webmanifest`、`sw.js`、`offline.html`、`icon.svg` | `pwa.themeColor`、`pwa.icons`、`pwa.offline` |
+| [`xfm-plugin-redirect`](./packages/redirect) | 每个旧地址一个跳转页 | `redirects`、front-matter `redirect_from` |
+| [`xfm-plugin-reading-stats`](./packages/reading-stats) | `stats.json`、`site.stats` | — |
+
+**页面增强** —— 往已生成的页面里补东西：
+
+| 包名 | 作用 | 主要配置 |
+| --- | --- | --- |
 | [`xfm-plugin-seo`](./packages/seo) | canonical、Open Graph、Twitter Card、JSON-LD | `seo.image`、`seo.twitter`、`seo.jsonLd` |
 | [`xfm-plugin-related`](./packages/related) | 相关文章 → `page.data.related` | `related.limit`、`related.minScore` |
-| [`xfm-plugin-llms`](./packages/llms) | `llms.txt`、`llms-full.txt` | `llms.full`、`llms.maxItems` |
 | [`xfm-plugin-minify`](./packages/minify) | 更小的 HTML（仅生产构建） | `minify.enabled`、`minify.aggressive` |
-| [`xfm-plugin-reading-stats`](./packages/reading-stats) | `stats.json`、`site.stats` | — |
+| [`xfm-plugin-image-size`](./packages/image-size) | 读文件头给 `&lt;img&gt;` 补 `width`/`height` | `imageSize.publicDir`、`imageSize.lazy` |
+| [`xfm-plugin-deadlinks`](./packages/deadlinks) | 列出指向空处的站内链接 | `deadlinks.strict`、`deadlinks.ignore` |
+| [`xfm-plugin-giscus`](./packages/giscus) | GitHub Discussions 评论（giscus / utterances） | `comments.repo`、`comments.repoId` … |
+| [`xfm-plugin-analytics`](./packages/analytics) | Umami / Plausible / GA / 百度 / 自定义 | `analytics.provider` … |
 
 每个包都有自己的 README，写了安装方式、可选项与产物。
 
 `related` 在渲染前按标签（3 分）/ 分类（2 分）/ 系列（3 分）加权算好写进 `page.data.related`，因此不会让渲染退回单线程；两套主题只要发现这个键就渲染推荐区块。`seo` 不会重复注入模板里已经手写的 canonical / `og:*`。`minify` 跳过 `<pre>`、`<code>`、`<textarea>`、`<script>`、`<style>`，dev 模式完全不执行。
+
+`image-size` 只读本地图片的头部字节（PNG / JPEG / GIF / WebP / SVG），让浏览器提前留出位置，图片加载完页面不会往下蹦一下；`deadlinks` 在构建结束后拿所有站内链接去对真实产物，列出指向空处的那几条（外链一律不发请求）；`redirect` 给每个旧地址写一个 `meta refresh` + `location.replace` 的跳转页，文章换地址不丢外链；`pwa` 让站点可安装、可离线。`giscus` 与 `analytics` 会加载第三方脚本，所以默认只在生产构建生效，想本地预览就把 `dev: true` 打开。
 
 ### 页面级开关（front-matter）
 
@@ -217,6 +232,10 @@ export default {
 | `llms: false` | 不进 `llms.txt` |
 | `related: false` / `related: [url, ...]` | 关闭推荐 / 手动指定推荐列表 |
 | `seo: false`、`noindex: true`、`image`、`canonical` | SEO 插件行为 |
+| `pwa: false` | 该页不注入 manifest 链接 |
+| `comments: false` | 该页不显示评论区 |
+| `analytics: false` | 该页不计入统计 |
+| `imageSize: false` | 该页 `&lt;img&gt;` 不加宽高 |
 
 主题只判断 `site.search` 与 `page.data.related` 是否存在，卸掉这两个插件只会少一块功能，不会让构建失败。
 

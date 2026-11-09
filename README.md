@@ -63,7 +63,7 @@ Four design decisions carry the performance:
 ## Features
 
 - **Themes**: `{% extend %}` / `{% block %}` template inheritance, `{% include %}` partials, `{# comments #}`, CSS-variable light/dark themes. Ships `default` (blog) and `docs` (sidebar documentation).
-- **Plugins**: six hooks (`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`). **Nothing is bundled with the core** — install plugins from npm like Hexo (`npm i -D xfm-plugin-rss`) and they load themselves; nine official ones live in [`packages/`](./packages).
+- **Plugins**: six hooks (`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`). **Nothing is bundled with the core** — install plugins from npm like Hexo (`npm i -D xfm-plugin-rss`) and they load themselves; fifteen official ones live in [`packages/`](./packages).
 - **Content**: YAML front-matter, drafts, tag/category/series taxonomies, automatic prev/next, `weight` ordering, and relative `.md` links resolved automatically. Every term gets a real page at `/tags/<name>/`, `/categories/<name>/` and `/series/<name>/`, with encoded URLs written out as readable directories. The default theme also ships a category index (`/categories/`) and a year-grouped archive (`/archives/`), driven by the `indexes` config block and generated only when the theme provides the layout. The post sidebar table of contents highlights the section you are currently reading as you scroll.
 - **Developer experience**: `xfm dev` builds in memory with SSE hot reload (keeps your scroll position), hot-swaps CSS separately, and lists available routes on 404.
 - **Easy to migrate**: template syntax follows Nunjucks/Liquid conventions; config supports `.mjs/.js/.json`.
@@ -192,17 +192,30 @@ A plugin that is referenced but not installed fails loudly, with the exact `npm 
 
 ### Official plugins
 
+**Site output** — feeds, indexes and files crawlers read:
+
 | Package | What it writes | Options |
 | --- | --- | --- |
 | [`xfm-plugin-sitemap`](./packages/sitemap) | `sitemap.xml`, `robots.txt` | — (`site.url` makes `<loc>` absolute) |
 | [`xfm-plugin-rss`](./packages/rss) | `feed.xml` (RSS 2.0, full bodies) | `site.rss.limit` |
 | [`xfm-plugin-feed-json`](./packages/feed-json) | `feed.json` (JSON Feed 1.1) | `feedJson.path`, `feedJson.limit` |
+| [`xfm-plugin-llms`](./packages/llms) | `llms.txt`, `llms-full.txt` | `llms.full`, `llms.maxItems` |
 | [`xfm-plugin-search`](./packages/search) | `search.json` + Ctrl/⌘+K panel | `search.path`, `search.maxChars`, `search.hint` |
+| [`xfm-plugin-pwa`](./packages/pwa) | `manifest.webmanifest`, `sw.js`, `offline.html`, `icon.svg` | `pwa.themeColor`, `pwa.icons`, `pwa.offline` |
+| [`xfm-plugin-redirect`](./packages/redirect) | one redirect page per alias | `redirects`, front-matter `redirect_from` |
+| [`xfm-plugin-reading-stats`](./packages/reading-stats) | `stats.json`, `site.stats` | — |
+
+**Page enhancements** — markup added to pages you already build:
+
+| Package | What it does | Options |
+| --- | --- | --- |
 | [`xfm-plugin-seo`](./packages/seo) | canonical, Open Graph, Twitter Card, JSON-LD | `seo.image`, `seo.twitter`, `seo.jsonLd` |
 | [`xfm-plugin-related`](./packages/related) | related posts → `page.data.related` | `related.limit`, `related.minScore` |
-| [`xfm-plugin-llms`](./packages/llms) | `llms.txt`, `llms-full.txt` | `llms.full`, `llms.maxItems` |
 | [`xfm-plugin-minify`](./packages/minify) | smaller HTML (production only) | `minify.enabled`, `minify.aggressive` |
-| [`xfm-plugin-reading-stats`](./packages/reading-stats) | `stats.json`, `site.stats` | — |
+| [`xfm-plugin-image-size`](./packages/image-size) | `width`/`height` on `&lt;img&gt;`, read from the file header | `imageSize.publicDir`, `imageSize.lazy` |
+| [`xfm-plugin-deadlinks`](./packages/deadlinks) | lists internal links that point nowhere | `deadlinks.strict`, `deadlinks.ignore` |
+| [`xfm-plugin-giscus`](./packages/giscus) | GitHub Discussions comments (giscus / utterances) | `comments.repo`, `comments.repoId`, … |
+| [`xfm-plugin-analytics`](./packages/analytics) | Umami / Plausible / GA / Baidu / custom | `analytics.provider`, … |
 
 Every package has its own README with install, options and output.
 
@@ -211,6 +224,14 @@ the template as `page.data.related` before rendering, so the worker pool stays a
 themes render a related block whenever the key exists. `seo` never duplicates a canonical /
 `og:*` tag that your template already writes. `minify` leaves `<pre>`, `<code>`, `<textarea>`,
 `<script>` and `<style>` untouched and is skipped entirely in dev.
+
+`image-size` reads PNG / JPEG / GIF / WebP / SVG headers, so the browser can reserve space
+before the image arrives — no layout jump, no extra dependency. `deadlinks` checks every
+internal `href`/`src` against the real output set after the build and prints what is broken
+(never fetches external URLs). `redirect` writes a `meta refresh` + `location.replace` page at
+each old address, so moved posts keep their inbound links. `pwa` makes the site installable
+and readable offline; `giscus` and `analytics` are opt-in because they load a third-party
+script — both are skipped in `xfm dev` unless you set `dev: true`.
 
 ### Per-page switches (front-matter)
 
@@ -222,6 +243,10 @@ themes render a related block whenever the key exists. `seo` never duplicates a 
 | `llms: false` | keep the page out of `llms.txt` |
 | `related: false` / `related: [url, ...]` | disable recommendations / pin a manual list |
 | `seo: false`, `noindex: true`, `image`, `canonical` | SEO plugin behaviour |
+| `pwa: false` | skip the manifest link on that page |
+| `comments: false` | no comment widget on that page |
+| `analytics: false` | no analytics on that page |
+| `imageSize: false` | leave `&lt;img&gt;` untouched |
 
 The themes only test `site.search` and `page.data.related`, so uninstalling those two plugins
 degrades gracefully instead of breaking the build.

@@ -7,6 +7,46 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.6] - 2026-11-09
+
+### Added
+
+Six new plugin packages (nine → fifteen), all zero-dependency:
+
+- `xfm-plugin-analytics` — one place for page views: Umami, Plausible, Google Analytics,
+  Baidu, or a raw snippet. `provider` accepts an array, so a migration can run two at once.
+- `xfm-plugin-giscus` — GitHub Discussions comments (giscus or utterances) on post pages
+  only. The iframe follows the theme toggle through `postMessage`, so dark mode stays dark.
+- `xfm-plugin-redirect` — writes a redirect page at every alias (`redirect_from` in
+  front-matter, or a global `redirects` map): `meta refresh` + `location.replace` + a
+  visible link, `noindex,follow`, canonical to the new URL.
+- `xfm-plugin-pwa` — `manifest.webmanifest`, a service worker (network-first for pages,
+  cache-first for assets, precache list built from the real theme assets and `public/`),
+  `offline.html`, and an `icon.svg` generated from the site title when you bring no icons.
+- `xfm-plugin-deadlinks` — after the build, resolves every internal `href`/`src` against the
+  real output set and prints the ones that point nowhere. `strict: true` turns it into a
+  build failure for CI. External URLs are never fetched.
+- `xfm-plugin-image-size` — parses PNG / JPEG / GIF / WebP / SVG headers and writes
+  `width`/`height` onto `<img>` so the browser reserves space (CLS). Reads at most the first
+  64 KB of a local file; no network, no decode.
+
+### Fixed
+
+- `xfm dev` only answered plugin output at its exact file path, so a redirect page emitted at
+  `old/index.html` returned 404 for `/old/` even though the build was correct. Extra files
+  now also answer at their directory URL, and the MIME type is taken from the real file
+  (`/old/` used to be served as `application/octet-stream`).
+- The dev server knows `.webmanifest` → `application/manifest+json`; Chrome refuses to
+  install a manifest served as octet-stream.
+
+### Changed
+
+- `README` / `README_CN` split the plugin list into **site output** and **page enhancements**
+  (fifteen packages), and the front-matter switch table gained `pwa` / `comments` /
+  `analytics` / `imageSize`.
+- The example site enables `pwa` and `deadlinks`, so every build of it doubles as a PWA demo
+  and a dead-link self-check.
+
 ## [0.4.5] - 2026-11-09
 
 ### Changed
