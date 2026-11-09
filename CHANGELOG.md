@@ -7,6 +7,47 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.2] - 2026-11-09
+
+### Breaking
+
+- **Plugins are no longer bundled with the core.** `lib/plugins/` is gone: the nine plugins
+  now live in `packages/` as independent npm packages (`xfm-plugin-sitemap`, `-rss`,
+  `-feed-json`, `-search`, `-seo`, `-related`, `-llms`, `-minify`, `-reading-stats`) and are
+  published separately. A site that used to write `plugins: ['rss']` must run
+  `npm i -D xfm-plugin-rss`; a missing plugin now fails the build with the exact `npm i`
+  command instead of silently falling back to a bundled copy.
+- `xfm create` writes a `package.json` and **no** `plugins` entry — new sites start with zero
+  plugins. The `xfm:<name>` prefix and the `lib/plugins/<name>.js` fallback were removed.
+
+### Added
+
+- Hexo-style plugin discovery: every `xfm-plugin-*` (or `@scope/xfm-plugin-*`) dependency in
+  the site's `package.json` is loaded automatically, with no config change. Short names in
+  `plugins: ['rss']` resolve to `xfm-plugin-rss`.
+- Resolution order is explicit: site-local file (`./plugins/x.js`) → site `node_modules` →
+  the CLI's own `node_modules`, so globally installed plugins work too.
+- `site.helpers` — a frozen, public helper set (`absoluteUrl`, `withBase`, `normalizeBase`,
+  `applyBase`, `plainText`, `markdownPlain`, `escapeHtml`). Plugin packages no longer reach
+  into `xfm/lib/...`, which keeps them working regardless of how the CLI was installed.
+- `xfm info` now lists declared and auto-discovered plugins side by side.
+- Four new tests (107 → 111): auto-discovery, duplicate registration, missing-plugin error,
+  and "the core depends on no plugin package".
+
+### Changed
+
+- The repository is an npm workspace (`packages/*`); `npm publish --workspaces` releases the
+  whole plugin set, each package with its own README.
+- README / README_CN gained a complete Plugins chapter: install commands, a table of all nine
+  official plugins (package, output, options), per-page front-matter switches and a
+  plugin-authoring example built on `site.helpers`.
+- The scaffold's console output and the generated site README both document
+  `npm i -D xfm-plugin-…`.
+
+### Fixed
+
+- The deployment note still described `scripts/pages-base.js`, removed back in 0.4.0.
+
 ## [0.4.1] - 2026-11-09
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "xfmpress",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Zero-dependency static site generator for Node.js — multi-threaded rendering, Nunjucks-style templates, drop-in themes and npm-installed plugins",
   "bin": {
     "xfm": "bin/xfm.js"
