@@ -1,8 +1,8 @@
 name: Deploy example site
 
 # 把 examples/blog 构建后部署到 GitHub Pages。
-# 仓库是项目页（<owner>.github.io/<repo>/），所以构建后调用 scripts/pages-base.js
-# 补子路径前缀——引擎尚未支持 site.base 前缀，这是临时步骤，详见脚本头部说明。
+# 仓库是项目页（<owner>.github.io/<repo>/），构建时通过 SITE_BASE 注入子路径，
+# 由引擎的 site.base 直接生成带前缀的链接（0.4.0 起，不再有构建后补前缀的脚本）。
 
 on:
   push:
@@ -13,7 +13,6 @@ on:
       - 'bin/**'
       - 'themes/**'
       - 'test/**'
-      - 'scripts/pages-base.js'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -58,9 +57,6 @@ jobs:
 
       - name: Build example site
         run: node bin/xfm.js build examples/blog
-
-      - name: Prefix links for project Pages
-        run: node scripts/pages-base.js examples/blog/dist "$SITE_BASE"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
