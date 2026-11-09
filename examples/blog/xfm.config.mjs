@@ -18,7 +18,17 @@ export default {
     ],
   },
   theme: 'themes/default',
-  plugins: ['./plugins/sitemap.js', './plugins/rss.js', './plugins/reading-stats.js', 'search'],
+  plugins: [
+    './plugins/sitemap.js',
+    './plugins/rss.js',
+    './plugins/reading-stats.js',
+    'feed-json',
+    'search',
+    'seo',
+    'related',
+    'llms',
+    'minify',
+  ],
   defaults: {
     layout: 'post.html',
   },

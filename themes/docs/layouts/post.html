@@ -24,6 +24,20 @@
     {% if page.data.prev %}<a class="prev" href="{{ page.data.prev.url }}">← {{ page.data.prev.title }}</a>{% endif %}
     {% if page.data.next %}<a class="next" href="{{ page.data.next.url }}">{{ page.data.next.title }} →</a>{% endif %}
   </footer>
+
+  {% if page.data.related.length %}
+  <section class="related">
+    <h2>相关文章</h2>
+    <ul>
+      {% for item in page.data.related %}
+      <li>
+        <a href="{{ item.url }}">{{ item.title }}</a>
+        {% if item.date %}<time>{{ item.date }}</time>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
 </article>
 {% if headings.length > 0 %}<script src="{{ site.assets }}toc.js" defer></script>{% endif %}
 {% endblock %}
