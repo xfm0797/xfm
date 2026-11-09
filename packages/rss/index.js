@@ -1,11 +1,12 @@
 'use strict';
 /**
- * RSS 插件
+ * RSS 插件（xfm-plugin-rss）
+ *
+ * 安装：npm i -D xfm-plugin-rss —— 装了就生效（也可在 config.plugins 写 'rss'）
  * 生成 feed.xml（RSS 2.0）。取最近 N 篇带日期的文章。
  */
-const { absoluteUrl } = require('../engine/url');
-
 module.exports = (site) => {
+  const { absoluteUrl } = site.helpers;
   const limit = (site.config.site && site.config.site.rss && site.config.site.rss.limit) || 20;
   return {
     name: 'rss',

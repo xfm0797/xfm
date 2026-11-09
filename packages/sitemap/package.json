@@ -1,0 +1,40 @@
+{
+  "name": "xfm-plugin-sitemap",
+  "version": "0.4.2",
+  "description": "Sitemap and robots.txt generator for xfmpress",
+  "type": "commonjs",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "xfm",
+    "xfmpress",
+    "xfmpress-plugin",
+    "static-site-generator",
+    "plugin"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xfm0797/xfm.git",
+    "directory": "packages/sitemap"
+  },
+  "bugs": {
+    "url": "https://github.com/xfm0797/xfm/issues"
+  },
+  "homepage": "https://github.com/xfm0797/xfm/tree/main/packages/sitemap#readme",
+  "author": "xfm0797",
+  "license": "MIT",
+  "peerDependencies": {
+    "xfmpress": ">=0.4.2"
+  },
+  "peerDependenciesMeta": {
+    "xfmpress": {
+      "optional": true
+    }
+  }
+}

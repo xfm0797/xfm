@@ -14,6 +14,21 @@ const { compile, TemplateError } = require('../lib/engine/template');
 const { parseFrontMatter, parseYaml } = require('../lib/engine/frontmatter');
 const { loadConfig, deepMerge } = require('../lib/engine/config');
 
+const BIN = path.join(__dirname, '..', 'bin', 'xfm.js');
+
+/** 脚手架默认不带插件（内核不带插件，装哪个用哪个） */
+function scaffoldSite(dir, args = ['--template=blog'], plugins = ['sitemap', 'rss']) {
+  const { execFileSync } = require('child_process');
+  execFileSync(process.execPath, [BIN, 'create', dir, ...args, '--force'], { stdio: 'pipe' });
+  if (!plugins.length) return dir;
+  const file = path.join(dir, 'package.json');
+  const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+  pkg.dependencies = Object.assign({}, pkg.dependencies);
+  for (const n of plugins) pkg.dependencies['xfm-plugin-' + n] = '^0.4.2';
+  fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+  return dir;
+}
+
 let passed = 0;
 let failed = 0;
 const failures = [];
@@ -466,7 +481,7 @@ async function testBuild() {
   const { execFileSync } = require('child_process');
   const bin = path.join(__dirname, '..', 'bin', 'xfm.js');
 
-  execFileSync(process.execPath, [bin, 'create', tmp, '--template=blog', '--title=测试站', '--force'], { stdio: 'pipe' });
+  scaffoldSite(tmp, ['--template=blog', '--title=测试站']);
   execFileSync(process.execPath, [bin, 'build', tmp], { stdio: 'pipe' });
 
   await test('首页与文章页生成', () => {
@@ -484,6 +499,54 @@ async function testBuild() {
     assert(rss.includes('你好，世界'), '文章未进入 rss');
   });
 
+  await test('插件装了就生效：package.json 依赖自动发现，不必写配置', () => {
+    const { Site } = require('../lib/engine/site');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-plug-auto-'));
+    try {
+      fs.writeFileSync(
+        path.join(dir, 'package.json'),
+        JSON.stringify({ name: 'auto', dependencies: { 'xfm-plugin-seo': '^0.4.2' }, devDependencies: { 'xfm-plugin-llms': '^0.4.2' } })
+      );
+      const site = new Site({ site: {}, plugins: [], theme: 'default', defaults: {} }, dir);
+      site.plugins.loadAuto(dir);
+      assert.deepStrictEqual(site.plugins.names(), ['llms', 'seo'], '自动发现结果不对：' + site.plugins.names());
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('显式短名与自动发现指向同一个插件时只注册一次', () => {
+    const { Site } = require('../lib/engine/site');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-plug-dedupe-'));
+    try {
+      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'd', dependencies: { 'xfm-plugin-rss': '^0.4.2' } }));
+      const site = new Site({ site: {}, plugins: ['rss'], theme: 'default', defaults: {} }, dir);
+      site.plugins.load('rss', dir);
+      site.plugins.loadAuto(dir);
+      assert.deepStrictEqual(site.plugins.names(), ['rss'], '同一插件被注册了两次');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('插件未安装时报错并给出安装命令', () => {
+    const { Site } = require('../lib/engine/site');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-plug-miss-'));
+    try {
+      const site = new Site({ site: {}, plugins: [], theme: 'default', defaults: {} }, dir);
+      assert.throws(() => site.plugins.load('no-such-plugin', dir), /npm i -D xfm-plugin-no-such-plugin/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('插件不再随内核发布：lib/plugins 目录已移除', () => {
+    assert(!fs.existsSync(path.join(__dirname, '..', 'lib', 'plugins')), 'lib/plugins 仍存在');
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+    const deps = Object.keys(pkg.dependencies || {});
+    assert(!deps.some((d) => d.startsWith('xfm-plugin-')), '内核不该依赖任何插件包');
+  });
+
   await test('HTML 语义结构', () => {
     const html = fs.readFileSync(path.join(tmp, 'dist', 'posts', 'hello-world', 'index.html'), 'utf8');
     assert(html.includes('<h1'), '缺少 h1');
@@ -494,7 +557,7 @@ async function testBuild() {
   await test('目录滚动高亮脚本随文章页下发', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-toc-'));
     try {
-      execFileSync(process.execPath, [bin, 'create', dir, '--template=blog', '--force'], { stdio: 'pipe' });
+      scaffoldSite(dir);
       fs.writeFileSync(
         path.join(dir, 'content', 'posts', 'toc-demo.md'),
         '---\ntitle: 目录演示\ndate: 2026-01-01\n---\n\n## 第一节\n\n正文\n\n### 小节\n\n正文\n\n## 第二节\n\n正文\n'
@@ -631,7 +694,7 @@ async function testBuild() {
   await test('docs 模板开箱即有侧栏分组', () => {
     const docsTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-docs-'));
     try {
-      execFileSync(process.execPath, [bin, 'create', docsTmp, '--template=docs', '--title=文档站', '--force'], { stdio: 'pipe' });
+      scaffoldSite(docsTmp, ['--template=docs', '--title=文档站'], []);
       execFileSync(process.execPath, [bin, 'build', docsTmp], { stdio: 'pipe' });
       const html = fs.readFileSync(path.join(docsTmp, 'dist', 'docs', 'configuration', 'index.html'), 'utf8');
       assert(html.includes('docs-nav'), '缺少侧栏容器');
@@ -653,7 +716,7 @@ async function testBuild() {
   await test('标签聚合页生成，中文标签落盘与链接一致', () => {
     const taxTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-tax-'));
     try {
-      execFileSync(process.execPath, [bin, 'create', taxTmp, '--template=blog', '--title=标签站', '--force'], { stdio: 'pipe' });
+      scaffoldSite(taxTmp, ['--template=blog', '--title=标签站'], []);
       fs.writeFileSync(
         path.join(taxTmp, 'content', 'posts', 'tagged.md'),
         '---\ntitle: 带标签的文章\ndate: 2026-02-01\ntags: [中文 标签, 随笔]\n---\n\n正文\n'
@@ -678,7 +741,7 @@ async function testBuild() {
   await test('聚合页进 sitemap，不进 RSS 与首页页面列表', () => {
     const taxTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-tax2-'));
     try {
-      execFileSync(process.execPath, [bin, 'create', taxTmp, '--template=blog', '--title=索引站', '--force'], { stdio: 'pipe' });
+      scaffoldSite(taxTmp, ['--template=blog', '--title=索引站']);
       execFileSync(process.execPath, [bin, 'build', taxTmp], { stdio: 'pipe' });
       const read = (p) => fs.readFileSync(path.join(taxTmp, 'dist', p), 'utf8');
 
@@ -694,7 +757,7 @@ async function testBuild() {
   await test('分类索引页与归档页生成', () => {
     const idxTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-idx-'));
     try {
-      execFileSync(process.execPath, [bin, 'create', idxTmp, '--template=blog', '--title=索引站', '--force'], { stdio: 'pipe' });
+      scaffoldSite(idxTmp, ['--template=blog', '--title=索引站']);
       const postDir = path.join(idxTmp, 'content', 'posts');
       fs.writeFileSync(path.join(postDir, 'a.md'), '---\ntitle: 甲\ndate: 2026-05-01\ncategory: 技术\ntags: [x]\n---\n\n甲\n');
       fs.writeFileSync(path.join(postDir, 'b.md'), '---\ntitle: 乙\ndate: 2026-06-01\ncategory: 技术\n---\n\n乙\n');
@@ -730,7 +793,7 @@ async function testBuild() {
     // docs 主题没有 categories/archives.html：不应生成，也不应报错
     const docsTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-idx-docs-'));
     try {
-      execFileSync(process.execPath, [bin, 'create', docsTmp, '--template=docs', '--force'], { stdio: 'pipe' });
+      scaffoldSite(docsTmp, ['--template=docs'], []);
       execFileSync(process.execPath, [bin, 'build', docsTmp], { stdio: 'pipe' });
       // 注意：/categories/<name>/ 是 taxonomy 聚合页，索引页特指 /categories/ 根
       assert(!fs.existsSync(path.join(docsTmp, 'dist', 'categories', 'index.html')), 'docs 主题不应生成分类索引');
@@ -742,7 +805,7 @@ async function testBuild() {
     // enabled: false 显式关闭
     const offTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-idx-off-'));
     try {
-      execFileSync(process.execPath, [bin, 'create', offTmp, '--template=blog', '--force'], { stdio: 'pipe' });
+      scaffoldSite(offTmp, ['--template=blog'], []);
       const cfgFile = path.join(offTmp, 'xfm.config.mjs');
       fs.writeFileSync(cfgFile, fs.readFileSync(cfgFile, 'utf8').replace(
         "server: { port: 4173 },",
@@ -981,7 +1044,7 @@ async function testExtras() {
     await test('首页模板不渲染列表时不生成分页', () => {
       const docsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-nopage-'));
       try {
-        execFileSync(process.execPath, [bin, 'create', docsRoot, '--template=docs', '--force'], { stdio: 'pipe' });
+        scaffoldSite(docsRoot, ['--template=docs'], []);
         for (let i = 1; i <= 4; i++) {
           fs.writeFileSync(
             path.join(docsRoot, 'content', 'docs', `p${i}.md`),
@@ -1002,7 +1065,7 @@ async function testExtras() {
 
       const off = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-nosearch-'));
       try {
-        execFileSync(process.execPath, [bin, 'create', off, '--template=blog', '--force'], { stdio: 'pipe' });
+        scaffoldSite(off, ['--template=blog'], []);
         const cfg = path.join(off, 'xfm.config.mjs');
         fs.writeFileSync(
           cfg,
@@ -1069,7 +1132,7 @@ async function testExtras() {
     });
 
     await test('minify 压缩空白并保护 pre/code', () => {
-      const plugin = require('../lib/plugins/minify.js')({
+      const plugin = require('xfm-plugin-minify')({
         config: { minify: {} },
         mode: 'production',
       });

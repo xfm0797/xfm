@@ -1,6 +1,8 @@
 'use strict';
 /**
- * feed-json 插件
+ * feed-json 插件（xfm-plugin-feed-json）
+ *
+ * 安装：npm i -D xfm-plugin-feed-json —— 装了就生效（也可在 config.plugins 写 'feed-json'）
  * -------------------------------------------------------------------
  * 生成 JSON Feed 1.1（feed.json），与内置 rss 插件互补：
  * 阅读器、自动化脚本、前端 fetch 都能直接消费，不用解析 XML。
@@ -8,8 +10,6 @@
  * 配置：feedJson: { path: 'feed.json', limit: 20 }
  * 页面级：rss: false 同时作用于两个 feed（沿用既有开关）。
  */
-const { absoluteUrl } = require('../engine/url');
-
 function iso(day) {
   const s = String(day || '');
   if (!s) return undefined;
@@ -17,6 +17,7 @@ function iso(day) {
 }
 
 module.exports = (site) => {
+  const { absoluteUrl } = site.helpers;
   const cfg = site.config.feedJson || {};
   const limit = Number(cfg.limit) || 20;
 

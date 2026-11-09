@@ -1,6 +1,8 @@
 'use strict';
 /**
- * related 插件
+ * related 插件（xfm-plugin-related）
+ *
+ * 安装：npm i -D xfm-plugin-related —— 装了就生效（也可在 config.plugins 写 'related'）
  * -------------------------------------------------------------------
  * 渲染前为每篇文章算「相关文章」，写进 page.data.related，
  * 模板里直接遍历即可：

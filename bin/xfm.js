@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadConfig } = require('../lib/engine/config');
 const { Site } = require('../lib/engine/site');
+const { discover } = require('../lib/engine/plugins');
 
 const C = {
   reset: '\x1b[0m',
@@ -90,7 +91,12 @@ async function cmdBuild(args) {
   const ms = performance.now() - t0;
   const size = await dirSize(outDir);
   console.log(`  ${paint(C.green, '✓')} 页面      ${paint(C.bold, String(site.pages.length))} 个`);
-  console.log(`  ${paint(C.green, '✓')} 附加产物  ${site.stats.extraOutputs || 0} 个（sitemap / rss / 等）`);
+  const extraFiles = site.stats.extraOutputs;
+  console.log(
+    `  ${paint(C.green, '✓')} 附加产物  ${
+      extraFiles ? `${extraFiles} 个（sitemap / rss / 等）` : paint(C.dim, '无（插件产出，装了插件才有）')
+    }`
+  );
   console.log(`  ${paint(C.green, '✓')} 静态资源  ${site.stats.assets} 个`);
   console.log(`  ${paint(C.green, '✓')} 输出目录  ${paint(C.dim, path.relative(process.cwd(), outDir) || outDir)}（共 ${human(size.total)}）`);
   if (site.stats.workers) console.log(`  ${paint(C.green, '✓')} 并行渲染  ${site.stats.workers} 个 worker 线程`);
@@ -212,7 +218,17 @@ async function cmdInfo(args) {
   console.log(`  内容目录  ${config.contentDir}`);
   console.log(`  输出目录  ${config.outDir}`);
   console.log(`  配置文件  ${config.__source ? path.relative(root, config.__source) : paint(C.dim, '（默认值）')}`);
-  console.log(`  插件      ${(config.plugins || []).join(', ') || paint(C.dim, '无')}`);
+  // 插件：配置里显式声明的 + package.json 里自动发现的，都列出来（去重保序）
+  const declared = (config.plugins || []).filter((p) => typeof p === 'string');
+  const auto = discover(root).map((n) => n.replace(/^(@[^/]+\/)?xfm-plugin-/, ''));
+  const plugins = [...new Set([...declared, ...auto])];
+  console.log(
+    `  插件      ${
+      plugins.length
+        ? plugins.map((n) => (declared.includes(n) ? n : `${n}${paint(C.dim, '（自动）')}`)).join(', ')
+        : paint(C.dim, '无（npm i -D xfm-plugin-xxx 按需安装）')
+    }`
+  );
   console.log(`  Node      ${process.version}  (${require('os').cpus().length} 核)\n`);
 }
 
@@ -304,7 +320,10 @@ async function main() {
   try {
     await fn(args);
   } catch (e) {
-    console.error(`\n${paint(C.red, '✗ 构建失败')}\n${e.stack || e.message}\n`);
+    const msg = String((e && e.message) || e);
+    // 引擎主动抛出的 [xfm] 错误已经写明怎么修，不必再糊一屏调用栈
+    const detail = msg.startsWith('[xfm]') ? msg : e.stack || msg;
+    console.error(`\n${paint(C.red, '✗ 出错了')}\n${detail}\n`);
     process.exit(1);
   }
 }

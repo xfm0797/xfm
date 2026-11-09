@@ -1,6 +1,8 @@
 'use strict';
 /**
- * seo 插件
+ * seo 插件（xfm-plugin-seo）
+ *
+ * 安装：npm i -D xfm-plugin-seo —— 装了就生效（也可在 config.plugins 写 'seo'）
  * -------------------------------------------------------------------
  * 给每个页面补上爬虫与社交平台需要的元信息：
  *
@@ -20,8 +22,6 @@
  * 配置：
  *   seo: { image: '/og.png', twitter: '@handle', jsonLd: true }
  */
-const { absoluteUrl } = require('../engine/url');
-
 const esc = (s) =>
   String(s == null ? '' : s)
     .replace(/&/g, '&amp;')
@@ -43,6 +43,7 @@ function ogLocale(lang) {
 }
 
 module.exports = (site) => {
+  const { absoluteUrl } = site.helpers;
   const cfg = site.config.seo || {};
   const siteConf = site.config.site || {};
   const siteName = siteConf.title || '';

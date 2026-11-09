@@ -1,15 +1,16 @@
 'use strict';
 /**
- * sitemap 插件
+ * sitemap 插件（xfm-plugin-sitemap）
+ *
+ * 安装：npm i -D xfm-plugin-sitemap —— 装了就生效（也可在 config.plugins 写 'sitemap'）
  * 生成 sitemap.xml，自动排除草稿与 sitemap: false 的页面，
  * 有 updated 字段时输出 lastmod。
  */
-const { absoluteUrl } = require('../engine/url');
-
 module.exports = (site) => ({
   name: 'sitemap',
 
   afterBuild(site) {
+    const { absoluteUrl } = site.helpers;
     const siteConfig = site.config.site || {};
     const pages = site.documents.filter((p) => p.data.sitemap !== false);
 

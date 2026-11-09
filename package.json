@@ -1,7 +1,7 @@
 {
   "name": "xfmpress",
   "version": "0.4.1",
-  "description": "Zero-dependency static site generator for Node.js — multi-threaded rendering, Nunjucks-style templates, drop-in themes and plugins",
+  "description": "Zero-dependency static site generator for Node.js — multi-threaded rendering, Nunjucks-style templates, drop-in themes and npm-installed plugins",
   "bin": {
     "xfm": "bin/xfm.js"
   },
@@ -10,6 +10,9 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "files": [
     "bin",
     "lib",
@@ -24,6 +27,7 @@
     "bench": "node bench/bench.js",
     "dev": "node bin/xfm.js dev examples/blog",
     "build:example": "node bin/xfm.js build examples/blog",
+    "publish:plugins": "npm publish --workspaces",
     "prepublishOnly": "node test/run.js"
   },
   "keywords": [

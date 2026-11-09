@@ -18,17 +18,9 @@ export default {
     ],
   },
   theme: 'themes/default',
-  plugins: [
-    './plugins/sitemap.js',
-    './plugins/rss.js',
-    './plugins/reading-stats.js',
-    'feed-json',
-    'search',
-    'seo',
-    'related',
-    'llms',
-    'minify',
-  ],
+  // 插件不随内核发布：npm i -D xfm-plugin-<name> 装上即自动加载（package.json 依赖扫描），
+  // 这里写短名只是为了固定加载顺序；写成 './plugins/x.js' 则是站点内的本地插件。
+  plugins: ['sitemap', 'rss', 'reading-stats', 'feed-json', 'search', 'seo', 'related', 'llms', 'minify'],
   defaults: {
     layout: 'post.html',
   },

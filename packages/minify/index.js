@@ -1,6 +1,8 @@
 'use strict';
 /**
- * minify 插件
+ * minify 插件（xfm-plugin-minify）
+ *
+ * 安装：npm i -D xfm-plugin-minify —— 装了就生效（也可在 config.plugins 写 'minify'）
  * -------------------------------------------------------------------
  * 构建时压缩 HTML：
  *   - 删除 HTML 注释（保留 `<!--[if ...]>` 条件注释）

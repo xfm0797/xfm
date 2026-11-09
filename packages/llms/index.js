@@ -1,6 +1,8 @@
 'use strict';
 /**
- * llms 插件
+ * llms 插件（xfm-plugin-llms）
+ *
+ * 安装：npm i -D xfm-plugin-llms —— 装了就生效（也可在 config.plugins 写 'llms'）
  * -------------------------------------------------------------------
  * 按 llmstxt.org 约定生成给大模型读的纯文本索引：
  *
@@ -12,8 +14,6 @@
  * 配置：llms: { path: 'llms.txt', full: true, fullPath: 'llms-full.txt', maxItems: 0 }
  * 页面级：front-matter 写 llms: false 可排除。
  */
-const { absoluteUrl } = require('../engine/url');
-
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'" };
 
 /** 粗糙但够用的 HTML → 纯文本 */
@@ -30,6 +30,7 @@ function stripHtml(html) {
 }
 
 module.exports = (site) => {
+  const { absoluteUrl } = site.helpers;
   const cfg = site.config.llms || {};
   const siteConf = site.config.site || {};
 

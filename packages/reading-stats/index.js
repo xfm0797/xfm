@@ -1,6 +1,8 @@
 'use strict';
 /**
- * 阅读统计插件
+ * 阅读统计插件（xfm-plugin-reading-stats）
+ *
+ * 安装：npm i -D xfm-plugin-reading-stats —— 装了就生效（也可在 config.plugins 写 'reading-stats'）
  * - 为每个页面计算字数（中英文分别统计）与预计阅读时长
  * - 生成 stats.json 供前端展示或构建报告使用
  * - 演示 extendContext：把统计结果注入模板上下文
