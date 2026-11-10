@@ -7,6 +7,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.7] - 2026-11-10
+
+### Added
+
+- **Official manual at [doc.lovou.pw/docs/xfmpress](https://doc.lovou.pw/docs/xfmpress/)** — ten
+  chapters covering install, CLI, configuration, content, templates, themes, plugins, deploy and
+  architecture. Both READMEs gained a `docs` badge and a Documentation table, and the sections for
+  CLI / configuration / plugins / themes / deployment now link to the matching chapter.
+- The npm `homepage` field and the scaffolded site README point at the manual.
+- The scaffold's README now lists all fifteen official plugins (it stopped at nine).
+
+### Fixed
+
+- README test counts were stale (111 → 118).
+
 ## [0.4.6] - 2026-11-09
 
 ### Added

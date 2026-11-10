@@ -1,6 +1,6 @@
 {
   "name": "xfmpress",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "Zero-dependency static site generator for Node.js — multi-threaded rendering, Nunjucks-style templates, drop-in themes and npm-installed plugins",
   "bin": {
     "xfm": "bin/xfm.js"
@@ -51,7 +51,7 @@
   "bugs": {
     "url": "https://github.com/xfm0797/xfm/issues"
   },
-  "homepage": "https://github.com/xfm0797/xfm#readme",
+  "homepage": "https://doc.lovou.pw/docs/xfmpress/",
   "author": "xfm0797",
   "license": "MIT"
 }
