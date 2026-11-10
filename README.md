@@ -5,6 +5,7 @@
 [![node](https://img.shields.io/node/v/xfmpress?style=flat-square)](https://nodejs.org)
 [![license](https://img.shields.io/npm/l/xfmpress?style=flat-square)](./LICENSE)
 [![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen?style=flat-square)](package.json)
+[![docs](https://img.shields.io/badge/docs-doc.lovou.pw-4f46e5?style=flat-square)](https://doc.lovou.pw/docs/xfmpress/)
 
 **A zero-dependency static site generator for Node.js.** Zero runtime dependencies, multi-threaded rendering, Nunjucks-style templates, drop-in themes and plugins.
 
@@ -24,6 +25,25 @@ xfm build            # production build
 > Shares the `xfm` brand with [hexo-theme-xfm](https://github.com/xfm0797/hexo-theme-xfm).
 > All three install methods, permission troubleshooting and the FAQ live in **[INSTALL.md](./INSTALL.md)**.
 > Plugins are **not** bundled: install what you need in the site (`npm i -D xfm-plugin-rss`) — see [Plugins](#plugins).
+
+## Documentation
+
+The full manual lives at **[doc.lovou.pw/docs/xfmpress](https://doc.lovou.pw/docs/xfmpress/)** and is the
+reference for every config field, hook and CLI flag. This README is the quick tour; when the two
+disagree, the manual wins.
+
+| Chapter | What it covers | Read it when |
+| --- | --- | --- |
+| [Install & upgrade](https://doc.lovou.pw/docs/xfmpress/install/) | three install methods, permission troubleshooting, upgrading | first time |
+| [CLI](https://doc.lovou.pw/docs/xfmpress/cli/) | every option of `create` / `dev` / `build` / `new` / `clean` / `info` | daily use |
+| [Configuration](https://doc.lovou.pw/docs/xfmpress/config/) | lookup order and the default of every field | tuning the site |
+| [Content & Markdown](https://doc.lovou.pw/docs/xfmpress/content/) | front-matter, directory conventions, URL rules, extended syntax | writing |
+| [Templates](https://doc.lovou.pw/docs/xfmpress/templates/) | variables, filters, control flow, inheritance, context | editing layouts |
+| [Theme development](https://doc.lovou.pw/docs/xfmpress/theme/) | directory layout, layout and partial responsibilities, bundling assets | building a theme |
+| [Plugins](https://doc.lovou.pw/docs/xfmpress/plugins/) | hook semantics, auto-loading, the fifteen official plugins, writing your own | extending |
+| [Build & deploy](https://doc.lovou.pw/docs/xfmpress/deploy/) | incremental cache, sub-paths, GitHub Pages / Netlify / Nginx | shipping |
+| [Architecture](https://doc.lovou.pw/docs/xfmpress/architecture/) | render pipeline, worker pool, cache fingerprints, reading the bench | understanding internals |
+| [Changelog](https://doc.lovou.pw/docs/xfmpress/changelog/) | release history from v0.1.0 onward | evaluating an upgrade |
 
 ## Performance
 
@@ -88,7 +108,11 @@ npm i -g xfmpress      # then use the xfm command (Node >= 18)
 | `xfm new "Title"` | New post (`--dir=posts --slug=xxx --draft --force`; duplicate titles auto-number) |
 | `xfm clean` / `xfm info` | Clean output / show config |
 
+Every flag, exit code and alias: [CLI chapter](https://doc.lovou.pw/docs/xfmpress/cli/).
+
 ## Configuration (`xfm.config.mjs`)
+
+> The complete field list with defaults and the config-file lookup order: **[Configuration chapter](https://doc.lovou.pw/docs/xfmpress/config/)**.
 
 ```js
 export default {
@@ -192,6 +216,8 @@ A plugin that is referenced but not installed fails loudly, with the exact `npm 
 
 ### Official plugins
 
+The plugin manual — hook semantics, load order, every option, and a full authoring guide — is the **[Plugins chapter](https://doc.lovou.pw/docs/xfmpress/plugins/)**.
+
 **Site output** — feeds, indexes and files crawlers read:
 
 | Package | What it writes | Options |
@@ -278,6 +304,8 @@ module.exports = (site) => {
 
 ## Theme structure
 
+> Layout and partial responsibilities, asset bundling and a step-by-step theme walkthrough: **[Theme development](https://doc.lovou.pw/docs/xfmpress/theme/)**.
+
 ```
 themes/my-theme/
 ├── layouts/        # base.html (skeleton), index/post/page.html (extend base)
@@ -299,10 +327,12 @@ xfm/
 ├── themes/docs/        # docs theme (sidebar navigation)
 ├── examples/blog/      # buildable example site
 ├── bench/bench.js      # benchmark (per-stage timings)
-└── test/run.js         # 111 tests (zero dependencies)
+└── test/run.js         # 118 tests (zero dependencies)
 ```
 
 ## Deployment
+
+> Recipes for GitHub Pages, Netlify, Vercel, Nginx and object storage: **[Build & deploy](https://doc.lovou.pw/docs/xfmpress/deploy/)**.
 
 `xfm build` emits plain static files in `dist/` — Nginx, object storage, Vercel, Netlify and GitHub Pages all work without a runtime.
 
@@ -313,7 +343,7 @@ This repository ships a ready-made GitHub Pages pipeline: `.github/workflows/pag
 ## Local development
 
 ```bash
-npm test               # 111 tests
+npm test               # 118 tests
 npm run bench          # 1,000-page benchmark (per-stage timings)
 npm run build:example  # build the example site
 npm run dev            # dev-server the example site

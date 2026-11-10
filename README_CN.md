@@ -5,6 +5,7 @@
 [![node](https://img.shields.io/node/v/xfmpress?style=flat-square)](https://nodejs.org)
 [![license](https://img.shields.io/npm/l/xfmpress?style=flat-square)](./LICENSE)
 [![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen?style=flat-square)](package.json)
+[![docs](https://img.shields.io/badge/docs-doc.lovou.pw-4f46e5?style=flat-square)](https://doc.lovou.pw/docs/xfmpress/)
 
 **A zero-dependency static site generator for Node.js.** 极致性能的静态站点生成器 —— 零运行时依赖、多线程渲染、Nunjucks 风格模板、即插即用的主题与插件。
 
@@ -23,6 +24,23 @@ xfm build            # 生产构建
 > 与同系列的 [hexo-theme-xfm](https://github.com/xfm0797/hexo-theme-xfm) 共用 `xfm` 品牌。
 > 完整的三种安装方式、权限排错与 FAQ 见 **[INSTALL_CN.md](./INSTALL_CN.md)**。
 > 插件**不随内核发布**：站点里 `npm i -D xfm-plugin-rss` 装了就生效，详见 [插件](#插件)。
+
+## 官方文档
+
+完整手册在 **[doc.lovou.pw/docs/xfmpress](https://doc.lovou.pw/docs/xfmpress/)**，是所有配置字段、钩子与命令行参数的权威说明。本 README 只是快速纵览，两者不一致时以手册为准。
+
+| 章节 | 内容 | 什么时候看 |
+| --- | --- | --- |
+| [安装与升级](https://doc.lovou.pw/docs/xfmpress/install/) | 三种安装方式、权限排错、升级 | 第一次用 |
+| [命令行](https://doc.lovou.pw/docs/xfmpress/cli/) | `create` / `dev` / `build` / `new` / `clean` / `info` 全部选项 | 日常操作 |
+| [配置](https://doc.lovou.pw/docs/xfmpress/config/) | 配置文件查找顺序与所有字段的默认值 | 调整站点行为 |
+| [内容与 Markdown](https://doc.lovou.pw/docs/xfmpress/content/) | front-matter、目录约定、URL 规则、扩展语法 | 写内容 |
+| [模板语法](https://doc.lovou.pw/docs/xfmpress/templates/) | 变量、过滤器、控制结构、继承、模板上下文 | 改布局 |
+| [主题开发](https://doc.lovou.pw/docs/xfmpress/theme/) | 目录结构、布局与片段的职责、资源打包 | 做主题 |
+| [插件](https://doc.lovou.pw/docs/xfmpress/plugins/) | 钩子语义、自动加载、15 个官方插件、自己写插件 | 扩能力 |
+| [构建与部署](https://doc.lovou.pw/docs/xfmpress/deploy/) | 增量缓存、子路径、GitHub Pages / Netlify / Nginx | 上线 |
+| [架构与性能](https://doc.lovou.pw/docs/xfmpress/architecture/) | 渲染管线、worker 池、缓存指纹、bench 读法 | 想搞懂原理 |
+| [版本记录](https://doc.lovou.pw/docs/xfmpress/changelog/) | v0.1.0 以来的版本主线 | 评估升级 |
 
 ## 性能
 
@@ -90,7 +108,11 @@ npm i -g xfmpress      # 全局安装，然后直接使用 xfm 命令（Node ≥
 | `xfm new "标题"` | 新建文章（`--dir=posts --slug=xxx --draft --force`，同名自动追加编号） |
 | `xfm clean` / `xfm info` | 清理产物 / 查看配置 |
 
+每个参数、退出码与别名见 [命令行](https://doc.lovou.pw/docs/xfmpress/cli/)。
+
 ## 配置示例（xfm.config.mjs）
+
+> 完整字段、默认值与配置文件查找顺序见 **[配置](https://doc.lovou.pw/docs/xfmpress/config/)**。
 
 ```js
 export default {
@@ -191,6 +213,8 @@ export default {
 
 ### 官方插件
 
+插件手册（钩子语义、加载顺序、每个选项、编写方法）见 **[插件章节](https://doc.lovou.pw/docs/xfmpress/plugins/)**。
+
 **站点产物** —— 给爬虫和客户端读的文件：
 
 | 包名 | 产物 | 主要配置 |
@@ -263,6 +287,8 @@ module.exports = (site) => {
 
 ## 主题结构
 
+> 布局与片段的分工、资源打包、从零做一个主题：**[主题开发](https://doc.lovou.pw/docs/xfmpress/theme/)**。
+
 ```
 themes/my-theme/
 ├── layouts/        # base.html（骨架）、index/post/page.html（继承 base）
@@ -284,10 +310,12 @@ xfm/
 ├── themes/docs/        # 文档主题（侧栏导航）
 ├── examples/blog/      # 可构建的示例站点
 ├── bench/bench.js      # 基准测试（分阶段耗时）
-└── test/run.js         # 111 项测试（零依赖）
+└── test/run.js         # 118 项测试（零依赖）
 ```
 
 ## 部署
+
+> GitHub Pages、Netlify、Vercel、Nginx 与对象存储的上线步骤：**[构建与部署](https://doc.lovou.pw/docs/xfmpress/deploy/)**。
 
 `xfm build` 产出纯静态文件到 `dist/`，Nginx、对象存储、Vercel、Netlify、GitHub Pages 都能直接托管，不需要运行时。
 
@@ -298,7 +326,7 @@ xfm/
 ## 本地开发
 
 ```bash
-npm test               # 111 项测试
+npm test               # 118 项测试
 npm run bench          # 1000 页基准（分阶段耗时）
 npm run build:example  # 构建示例站点
 npm run dev            # 开发示例站点

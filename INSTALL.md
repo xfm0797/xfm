@@ -2,6 +2,7 @@
 
 > Assumes a Node 22 environment. From zero to a running site takes about a minute.
 > Repository: `https://github.com/xfm0797/xfm`
+> Full manual: `https://doc.lovou.pw/docs/xfmpress/`
 
 [English](./INSTALL.md) | [简体中文](./INSTALL_CN.md)
 

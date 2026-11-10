@@ -2,6 +2,7 @@
 
 > 面向 Node 22 环境，从零到跑起来大约 1 分钟。
 > 项目地址：`https://github.com/xfm0797/xfm`
+> 完整手册：`https://doc.lovou.pw/docs/xfmpress/`
 
 [English](./INSTALL.md) | 简体中文
 
