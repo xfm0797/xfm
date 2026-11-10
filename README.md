@@ -105,7 +105,7 @@ npm i -g xfmpress      # then use the xfm command (Node >= 18)
 | `xfm create [dir]` | Scaffold a site (`--template=blog\|docs`, `--title=`). Alias: `xfm init` |
 | `xfm dev [dir]` | Dev server (`--port=`). Aliases: `serve`, `server`, `preview` |
 | `xfm build [dir]` | Production build (`--dev` enables incremental cache). Aliases: `generate`, `gen` |
-| `xfm new "Title"` | New post (`--dir=posts --slug=xxx --draft --force`; duplicate titles auto-number) |
+| `xfm new [layout] "Title"` | New content — `post` (default) / `page` / `draft`; `--dir= --slug= --layout= --draft --force`, duplicate titles auto-number |
 | `xfm clean` / `xfm info` | Clean output / show config |
 
 Every flag, exit code and alias: [CLI chapter](https://doc.lovou.pw/docs/xfmpress/cli/).
@@ -152,7 +152,29 @@ tags: [nodejs, performance]
 description: Summary (used by list pages and RSS)
 draft: false
 ---
+```
 
+Create files with `xfm new`, laid out the way Hexo does it:
+
+```bash
+xfm new "Hello"               # content/posts/hello.md         → /posts/hello/
+xfm new page about            # content/about.md               → /about/
+xfm new draft "Half an idea"  # content/posts/half-an-idea.md  draft: true
+xfm new page intro --dir=docs # content/docs/intro.md          → /docs/intro/
+```
+
+`page` writes `layout: page.html` and `type: page`: the page gets its own URL and can be put in
+`site.nav`, but it stays out of the post list, RSS, related posts and search results. `draft`
+adds `draft: true`, so production builds skip it until you delete the line. A single argument is
+always a title — `xfm new page` creates a *post* called “page”, and `xfm new 我的 文章` keeps the
+whole string.
+
+The starting content comes from `scaffolds/<layout>.md` in the site, so you can adjust it once and
+every `xfm new` follows: placeholders are `{{ title }}`, `{{ date }}` and `{{ layout }}`. Missing
+front-matter keys are filled in automatically — a scaffold with no front-matter at all still
+produces a working page.
+
+```markdown
 Body supports the common GFM syntax, plus:
 
 ::: tip Callout

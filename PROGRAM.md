@@ -28,11 +28,12 @@ Or reference it by path with `npm link` (handy while debugging).
 ## Directory layout
 
 ```
-xfm-0.4.2/
+xfm-0.4.8/
 ├── bin/xfm.js            CLI entry (build / dev / new / create / clean / info)
 ├── lib/
 │   ├── index.js           programmatic API (build / createSite)
 │   ├── cli/scaffold.js    site scaffolding
+│   ├── cli/scaffolds.js   content scaffolds for `xfm new` (post / page / draft)
 │   ├── engine/            core engine
 │   │   ├── markdown.js    line-scanning Markdown compiler + syntax highlighting
 │   │   ├── template.js    templates compiled to JS functions

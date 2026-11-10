@@ -28,11 +28,12 @@ xfm --help
 ## 目录结构
 
 ```
-xfm-0.3.0/
+xfm-0.4.8/
 ├── bin/xfm.js            CLI 入口（build / dev / new / create / clean / info）
 ├── lib/
 │   ├── index.js           编程式 API（build / createSite）
 │   ├── cli/scaffold.js    站点脚手架生成
+│   ├── cli/scaffolds.js   xfm new 的内容模板（post / page / draft）
 │   ├── engine/            核心引擎
 │   │   ├── markdown.js    线性扫描 Markdown 编译器 + 语法高亮
 │   │   ├── template.js    模板编译为 JS 函数

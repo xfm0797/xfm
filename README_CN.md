@@ -105,7 +105,7 @@ npm i -g xfmpress      # 全局安装，然后直接使用 xfm 命令（Node ≥
 | `xfm create [目录]` | 创建站点（`--template=blog\|docs`，`--title=`），别名 `xfm init` |
 | `xfm dev [目录]` | 开发服务器（`--port=`），别名 `serve` / `server` / `preview` |
 | `xfm build [目录]` | 生产构建（`--dev` 启用增量缓存），别名 `generate` / `gen` |
-| `xfm new "标题"` | 新建文章（`--dir=posts --slug=xxx --draft --force`，同名自动追加编号） |
+| `xfm new [布局] "标题"` | 新建内容：`post` 文章（默认）/ `page` 页面 / `draft` 草稿；`--dir= --slug= --layout= --draft --force`，同名自动追加编号 |
 | `xfm clean` / `xfm info` | 清理产物 / 查看配置 |
 
 每个参数、退出码与别名见 [命令行](https://doc.lovou.pw/docs/xfmpress/cli/)。
@@ -167,6 +167,19 @@ const ok = true; // 内置语法高亮
 
 围栏首行可附加标题：\`\`\`js app.js（元信息如 `{1,3-5}` 会被忽略）。
 ```
+
+新建文件用 `xfm new`，布局规则和 Hexo 一致：
+
+```bash
+xfm new "你好世界"             # content/posts/你好世界.md      → /posts/你好世界/
+xfm new page about            # content/about.md               → /about/
+xfm new draft "写一半的想法"    # content/posts/写一半的想法.md   带 draft: true
+xfm new page intro --dir=docs # content/docs/intro.md          → /docs/intro/
+```
+
+`page` 会写 `layout: page.html` 与 `type: page`：页面有自己的 URL、可以挂进 `site.nav`，但不会混进文章列表、RSS、相关推荐和搜索索引。`draft` 会写 `draft: true`，生产构建直接跳过，删掉那行就发布。只给一个参数时它一定是标题——`xfm new page` 建的是**文章**，标题叫 “page”；`xfm new 我的 文章` 也不会被截断。
+
+初始内容取自站点的 `scaffolds/<布局>.md`，改一次之后所有 `xfm new` 都按它来，占位符是 `{{ title }}`、`{{ date }}`、`{{ layout }}`。漏写的 front-matter 字段（标题、布局、`type: page`、`draft`）会自动补齐，所以哪怕脚手架里完全不写 front-matter，生成出来的页面也是能正常构建的。
 
 在 GFM 之外，引擎还支持：
 

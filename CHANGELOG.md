@@ -7,6 +7,38 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.8] - 2026-11-10
+
+### Added
+
+- **`xfm new [layout] <title>` — pages now have a first-class command**, the same shape as
+  `hexo new [layout] <title>`:
+  - `xfm new page about` → `content/about.md`, published at `/about/`
+  - `xfm new draft "Half an idea"` → `content/posts/half-an-idea.md` with `draft: true`
+  - `xfm new "Hello"` / `xfm new post "Hello"` → a post, unchanged
+  - `--layout=` for when the title itself starts with a layout name, `--dir=` still points the
+    file at any subdirectory.
+- Pages get `layout: page.html` **and** `type: page`, so they have their own URL and can be added
+  to `site.nav`, but never appear in the post list, RSS, JSON Feed, related posts or the search
+  index. Previously this had to be remembered by hand.
+- **`scaffolds/`** — the initial content of `xfm new` now comes from `scaffolds/<layout>.md` in
+  the site, with `{{ title }}` / `{{ date }}` / `{{ layout }}` placeholders, exactly like Hexo.
+  `xfm create` writes the three default scaffolds so they can be edited; a site without the
+  directory falls back to the built-in templates.
+- Missing front-matter keys are filled in when a custom scaffold omits them (title, date, layout,
+  `type: page`, `draft`), so a bare scaffold cannot silently produce a page that behaves like a
+  post or a draft that gets published.
+
+### Changed
+
+- `xfm new` prints the layout and the resulting URL (`[page] → /about/`), names the scaffold it
+  used, and suggests the right command when the first word looks like a misspelled layout.
+- A multi-word title is kept whole: `xfm new 我的 文章` creates 「我的 文章」 instead of dropping
+  everything after the first word. A single argument is always a title (`xfm new page` is a post
+  named “page”), which matches Hexo.
+- The starter post body no longer repeats an `# H1` that the theme already renders from
+  `page.title`.
+
 ## [0.4.7] - 2026-11-10
 
 ### Added

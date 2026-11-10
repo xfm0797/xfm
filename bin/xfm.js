@@ -16,6 +16,13 @@ const path = require('path');
 const { loadConfig } = require('../lib/engine/config');
 const { Site } = require('../lib/engine/site');
 const { discover } = require('../lib/engine/plugins');
+const {
+  NEW_LAYOUTS,
+  templateFor,
+  renderTemplate,
+  ensureFrontMatter,
+  normalizeFrontMatter,
+} = require('../lib/cli/scaffolds');
 
 const C = {
   reset: '\x1b[0m',
@@ -142,20 +149,53 @@ async function cmdDev(args) {
 /* new                                                                 */
 /* ------------------------------------------------------------------ */
 
+/** `--flag` 可能被解析成 true 或字符串 "true"，统一判定 */
+const truthy = (v) => v === true || v === 'true' || v === '1' || v === 'yes';
+
 async function cmdNew(args) {
   const root = path.resolve(process.cwd());
   const config = await loadConfig(root);
-  const title = args._[0] || '未命名文章';
+
+  // `xfm new [布局] <标题>`：布局只在「有两个以上位置参数、且第一个是已知布局」时生效，
+  // 所以 `xfm new 我的文章` 仍然是一篇文章，而不是一个叫「我的文章」的布局。
+  const positional = (args._ || []).map(String);
+  let layout = args.layout ? String(args.layout).toLowerCase() : '';
+  let title = positional[0] || '';
+  let typo = '';
+  if (!layout && positional.length > 1 && NEW_LAYOUTS[positional[0].toLowerCase()]) {
+    layout = positional[0].toLowerCase();
+    title = positional.slice(1).join(' ');
+  } else if (!layout && positional.length > 1) {
+    // 第一个词不是布局：整体当作标题（`xfm new 我的 文章` 不该只剩「我的」）
+    const guess = Object.keys(NEW_LAYOUTS).find((k) => editDistance(positional[0].toLowerCase(), k) <= 2);
+    if (guess) typo = guess;
+    title = positional.join(' ');
+  }
+  if (!layout) layout = 'post';
+  if (!NEW_LAYOUTS[layout]) {
+    throw new Error(
+      `[xfm] 未知布局：${layout}\n  可用：${Object.keys(NEW_LAYOUTS).join(' / ')}（不写默认 post）`
+    );
+  }
+  const spec = NEW_LAYOUTS[layout];
+
   const now = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:00`;
-  const dir = args.dir || 'posts';
+
+  if (!title) title = layout === 'page' ? '未命名页面' : '未命名文章';
+
+  // 页面默认落在 content 根目录（URL 就是 /<slug>/），文章与草稿落在 posts/
+  const dir = args.dir !== undefined ? String(args.dir) : spec.dir;
+  const draft = truthy(args.draft) || spec.draft;
+
   // slug：显式指定优先，否则由标题生成；纯符号标题回落到 post
   const slug =
     String(args.slug || title)
       .toLowerCase()
       .replace(/[^\p{L}\p{N}]+/gu, '-')
       .replace(/^-+|-+$/g, '') || 'post';
+
   const dirPath = path.join(root, config.contentDir, dir);
   let file = path.join(dirPath, `${slug}.md`);
   // 同名不再直接失败：自动追加 -2 / -3，随时新建同题文章；--force 覆盖原文件
@@ -164,36 +204,41 @@ async function cmdNew(args) {
     while (fs.existsSync(file)) file = path.join(dirPath, `${slug}-${n++}.md`);
   }
   const renamed = path.basename(file, '.md') !== slug;
+
+  // 站点 scaffolds/<layout>.md 优先，否则用内置模板
+  const tpl = templateFor(root, layout);
+  let text = renderTemplate(tpl.text, { title, date, layout: spec.layout });
+  text = normalizeFrontMatter(text);
+  text = ensureFrontMatter(text, {
+    title: JSON.stringify(String(title)),
+    date,
+    layout: spec.layout,
+    type: spec.type,
+    draft: draft ? 'true' : undefined,
+  });
+
   await fs.promises.mkdir(path.dirname(file), { recursive: true });
-  const fm = [
-    '---',
-    // 标题里可能有 `:` `#` 等 YAML 特殊字符，统一用双引号包裹
-    `title: ${JSON.stringify(String(title))}`,
-    `date: ${date}`,
-    'description: ""',
-    `tags: []`,
-    'layout: post.html',
-    // 默认就是"可发布"状态：之前默认 draft: true，新文章构建后根本看不到，
-    // 很容易被误判成命令没生效。要写半成品时显式加 --draft
-    args.draft ? 'draft: true' : null,
-    '---',
-    '',
-    `# ${title}`,
-    '',
-    '开始写作…',
-    '',
-  ]
-    .filter((l) => l !== null)
-    .join('\n');
-  await fs.promises.writeFile(file, fm);
-  console.log(`${paint(C.green, '✓')} 已创建 ${paint(C.cyan, path.relative(root, file))}`);
+  await fs.promises.writeFile(file, text);
+
+  const url = '/' + [dir.replace(/^\/+|\/+$/g, ''), path.basename(file, '.md')].filter(Boolean).join('/') + '/';
+  console.log(
+    `${paint(C.green, '✓')} 已创建 ${paint(C.cyan, path.relative(root, file))}  ${paint(C.dim, `[${layout}] → ${url}`)}`
+  );
+  if (tpl.from) console.log(`  ${paint(C.dim, `模板：${tpl.from}`)}`);
   if (renamed) {
-    console.log(`  ${paint(C.dim, `同名文章已存在，自动改名为 ${path.basename(file)}（想覆盖原文件用 --force）。`)}`);
+    console.log(`  ${paint(C.dim, `同名文件已存在，自动改名为 ${path.basename(file)}（想覆盖原文件用 --force）。`)}`);
   }
-  if (args.draft) {
+  if (typo) {
+    console.log(
+      `  ${paint(C.dim, `没有名为「${positional[0]}」的布局，已按文章标题处理；想建${typo === 'page' ? '页面' : '内容'}用 xfm new ${typo} <标题>。`)}`
+    );
+  }
+  if (draft) {
     console.log(`  ${paint(C.dim, '草稿状态：不会出现在构建产物里。发布时把 front-matter 的 draft 改成 false 或删掉该行。')}`);
+  } else if (spec.type === 'page') {
+    console.log(`  ${paint(C.dim, '页面不进文章列表、RSS 与相关推荐；想让它出现在导航里，加进 xfm.config.mjs 的 site.nav。')}`);
   } else {
-    console.log(`  ${paint(C.dim, '已是可发布状态：xfm build 即可看到；想先写半成品用 xfm new --draft。')}`);
+    console.log(`  ${paint(C.dim, '已是可发布状态：xfm build 即可看到；想先写半成品用 xfm new draft。')}`);
   }
 }
 
@@ -345,7 +390,7 @@ ${paint(C.bold, '用法')}
 ${paint(C.bold, '命令')}
   dev [目录]           启动开发服务器，文件变更秒级热更新
   build [目录]         生产构建（多线程并行渲染）
-  new <标题>           新建文章（--dir=posts --slug=xxx --draft，同名自动编号）
+  new [布局] <标题>    新建内容：post 文章（默认）/ page 页面 / draft 草稿
   create [目录]        创建新站点（--template=blog|docs）
   clean [目录]         清理 dist 与增量缓存
   info [目录]          查看站点配置
@@ -357,6 +402,9 @@ ${paint(C.bold, '选项')}
   --port=4173          dev 端口（默认 4173）
   --dev                build 时启用增量缓存
   --template=docs      create 时使用文档模板
+  --layout=page        new 的布局，等价于写在标题前的 post / page / draft
+  --dir=posts          new 的落地目录（page 默认在 content 根目录）
+  --slug=hello         new 的文件名，默认由标题生成
   --draft              new 时生成草稿（默认直接可发布）
   --force              new 时覆盖同名文件，而不是自动编号
   -h, --help           帮助
@@ -366,7 +414,11 @@ ${paint(C.bold, '示例')}
   xfm create my-blog --template=blog
   xfm init my-blog            # 同 create，Hexo 习惯
   cd my-blog && xfm dev
-  xfm build
+
+  xfm new "你好世界"           # content/posts/你好世界.md
+  xfm new page about          # content/about.md      → /about/
+  xfm new draft "写一半的想法"  # 带 draft: true，生产构建不输出
+  xfm new page intro --dir=docs        # content/docs/intro.md → /docs/intro/
 `);
   process.exit(code);
 }

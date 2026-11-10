@@ -675,6 +675,37 @@ async function testBuild() {
     assert.strictEqual(fm.data.title, 'Hexo: 入门', JSON.stringify(fm.data));
   });
 
+  await test('new page 生成独立页面，不进文章列表', () => {
+    execFileSync(process.execPath, [bin, 'new', 'page', '关于我'], { cwd: tmp, stdio: 'pipe' });
+    const file = path.join(tmp, 'content', '关于我.md');
+    assert(fs.existsSync(file), '页面应落在 content 根目录');
+    const fm = parseFrontMatter(fs.readFileSync(file, 'utf8')).data;
+    assert.strictEqual(fm.layout, 'page.html', JSON.stringify(fm));
+    assert.strictEqual(fm.type, 'page', '页面应带 type: page');
+    execFileSync(process.execPath, [bin, 'build', tmp], { stdio: 'pipe' });
+    assert(fs.existsSync(path.join(tmp, 'dist', '关于我', 'index.html')), '页面未生成 /关于我/');
+    const home = fs.readFileSync(path.join(tmp, 'dist', 'index.html'), 'utf8');
+    assert(!home.includes('关于我'), '页面被当成文章列进了首页');
+  });
+
+  await test('new draft 布局与站点自定义脚手架', () => {
+    execFileSync(process.execPath, [bin, 'new', 'draft', '稍后写'], { cwd: tmp, stdio: 'pipe' });
+    const draft = fs.readFileSync(path.join(tmp, 'content', 'posts', '稍后写.md'), 'utf8');
+    assert(draft.includes('draft: true'), 'draft 布局应写入 draft: true');
+
+    // scaffolds/page.md 覆盖内置模板，漏写的 front-matter 字段要自动补上
+    fs.mkdirSync(path.join(tmp, 'scaffolds'), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmp, 'scaffolds', 'page.md'),
+      '---\ntitle: {{ title }}\n---\n\n自定义脚手架 {{ title }}\n'
+    );
+    execFileSync(process.execPath, [bin, 'new', 'page', '联系'], { cwd: tmp, stdio: 'pipe' });
+    const page = fs.readFileSync(path.join(tmp, 'content', '联系.md'), 'utf8');
+    assert(page.includes('自定义脚手架 联系'), '没有用站点 scaffolds/page.md：' + page);
+    assert(page.includes('layout: page.html'), '缺 front-matter 的脚手架应补齐 layout');
+    assert(page.includes('type: page'), '缺 front-matter 的脚手架应补齐 type: page');
+  });
+
   await test('草稿不发布', () => {
     fs.writeFileSync(path.join(tmp, 'content', 'posts', 'draft-test.md'),
       '---\ntitle: 草稿测试\ndraft: true\n---\n草稿');
