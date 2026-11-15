@@ -14,6 +14,7 @@ export default {
       { title: '首页', url: '/' },
       { title: '分类', url: '/categories/' },
       { title: '归档', url: '/archives/' },
+      { title: '更新日志', url: '/changelog/' },
       { title: '关于', url: '/about/' },
     ],
   },
