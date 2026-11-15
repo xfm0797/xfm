@@ -13,6 +13,7 @@ const { renderMarkdown, escapeHtml, slugify, stripDuplicateH1 } = require('../li
 const { compile, TemplateError } = require('../lib/engine/template');
 const { parseFrontMatter, parseYaml } = require('../lib/engine/frontmatter');
 const { loadConfig, deepMerge } = require('../lib/engine/config');
+const { formatDate, formatDay } = require('../lib/engine/site');
 
 const BIN = path.join(__dirname, '..', 'bin', 'xfm.js');
 
@@ -442,6 +443,28 @@ async function testFrontMatter() {
     assert.deepStrictEqual(r.data, {});
   });
 
+  await test('BOM 开头的文件仍能解析 front-matter', () => {
+    // Windows 编辑器常见的 UTF-8 with BOM：BOM 会让 startsWith('---') 落空，
+    // 结果是整块 front-matter 被当成正文，标题退回文件名、日期和布局全丢
+    const r = parseFrontMatter('\ufeff---\ntitle: 带 BOM\ndate: 2026-01-02\n---\n正文');
+    assert.strictEqual(r.data.title, '带 BOM', JSON.stringify(r.data));
+    assert.strictEqual(r.data.date, '2026-01-02');
+    assert.strictEqual(r.content, '正文');
+  });
+
+  await test('date-only 按本地日历日解析', () => {
+    // new Date('2026-11-10') 是 UTC 零点，UTC-5 会退到 11 月 9 日
+    const d = formatDate('2026-11-10');
+    assert.strictEqual(d.getHours(), 0, 'date-only 应是本地零点，实际 ' + d.getHours() + ' 点');
+    assert.strictEqual(formatDay(d), '2026-11-10');
+    // 带时间的写法（Hexo 风格）也按本地时间解释，且不丢时分
+    const t = formatDate('2026-11-10 22:30:15');
+    assert.strictEqual(t.getHours(), 22);
+    assert.strictEqual(t.getMinutes(), 30);
+    assert.strictEqual(formatDay(t), '2026-11-10');
+    assert.strictEqual(formatDate('不是日期'), null);
+  });
+
   await test('配置深合并', () => {
     const merged = deepMerge({ a: { x: 1, y: 2 }, b: [1] }, { a: { y: 9 } });
     assert.deepStrictEqual(merged, { a: { x: 1, y: 9 }, b: [1] });
@@ -617,6 +640,46 @@ async function testBuild() {
     assert(mp[1].includes('你好，世界') && mp[1].includes('测试站'), '文章页 title 不完整：' + mp[1]);
   });
 
+  await test('create 生成的站点带 .gitignore', () => {
+    const gi = path.join(tmp, '.gitignore');
+    assert(fs.existsSync(gi), '没有生成 .gitignore，build 后 dist/ 会全进版本库');
+    const text = fs.readFileSync(gi, 'utf8');
+    for (const rule of ['dist/', '.xfm/', 'node_modules/']) {
+      assert(text.includes(rule), '.gitignore 缺少 ' + rule + '：' + text);
+    }
+  });
+
+  await test('create 不覆盖已有的 .gitignore', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-gi-'));
+    try {
+      fs.writeFileSync(path.join(dir, '.gitignore'), 'my-secret.env\n');
+      execFileSync(process.execPath, [bin, 'create', dir, '--force'], { stdio: 'pipe' });
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), 'my-secret.env\n');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('create 认出 .js 配置的站点，不冲掉已有内容', () => {
+    // 只检查 xfm.config.mjs 的话，用 .js / .cjs / .json 配的站点会被直接覆盖
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-jsx-'));
+    try {
+      fs.writeFileSync(path.join(dir, 'xfm.config.js'), "module.exports = { site: { title: '手写' } };\n");
+      fs.mkdirSync(path.join(dir, 'content'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'content', 'index.md'), '---\ntitle: 我写的首页\n---\n原有内容\n');
+      let code = 0;
+      try {
+        execFileSync(process.execPath, [bin, 'create', dir], { stdio: 'pipe', encoding: 'utf8' });
+      } catch (e) {
+        code = e.status;
+      }
+      assert.strictEqual(code, 1, '应拒绝覆盖已有站点，实际退出码 ' + code);
+      assert(fs.readFileSync(path.join(dir, 'content', 'index.md'), 'utf8').includes('我写的首页'), '已有首页被覆盖');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   await test('init 是 create 的别名', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-alias-'));
     execFileSync(process.execPath, [bin, 'init', path.join(dir, 'site'), '--template=blog', '--force'], { stdio: 'pipe' });
@@ -704,6 +767,61 @@ async function testBuild() {
     assert(page.includes('自定义脚手架 联系'), '没有用站点 scaffolds/page.md：' + page);
     assert(page.includes('layout: page.html'), '缺 front-matter 的脚手架应补齐 layout');
     assert(page.includes('type: page'), '缺 front-matter 的脚手架应补齐 type: page');
+  });
+
+  await test('脚手架与布局冲突时以布局为准', () => {
+    // draft.md 里留着 draft: false / layout: page.html（多半是从别的模板改来的），
+    // 若不覆盖，"草稿"会直接发布出去，而命令还在报告"不会出现在产物里"
+    fs.writeFileSync(
+      path.join(tmp, 'scaffolds', 'draft.md'),
+      '---\ntitle: {{ title }}\ndraft: false\nlayout: page.html\n---\n\n草稿模板\n'
+    );
+    execFileSync(process.execPath, [bin, 'new', 'draft', '模板冲突'], { cwd: tmp, stdio: 'pipe' });
+    const fm = parseFrontMatter(fs.readFileSync(path.join(tmp, 'content', 'posts', '模板冲突.md'), 'utf8')).data;
+    assert.strictEqual(fm.draft, true, '脚手架里的 draft: false 把草稿变成了可发布：' + JSON.stringify(fm));
+    assert.strictEqual(fm.layout, 'post.html', '脚手架里的 layout 盖过了 draft 布局');
+
+    // 反向：post 布局碰到留在模板里的 draft: true，要写回 draft: false
+    fs.writeFileSync(
+      path.join(tmp, 'scaffolds', 'post.md'),
+      '---\ntitle: {{ title }}\ndraft: true\n---\n\n正文\n'
+    );
+    execFileSync(process.execPath, [bin, 'new', '从草稿改来'], { cwd: tmp, stdio: 'pipe' });
+    const post = parseFrontMatter(fs.readFileSync(path.join(tmp, 'content', 'posts', '从草稿改来.md'), 'utf8')).data;
+    assert.strictEqual(post.draft, false, 'post 布局仍留下 draft: true：' + JSON.stringify(post));
+
+    fs.unlinkSync(path.join(tmp, 'scaffolds', 'draft.md'));
+    fs.unlinkSync(path.join(tmp, 'scaffolds', 'post.md'));
+  });
+
+  await test('new --dir 用反斜杠时 URL 仍是正斜杠', () => {
+    const out = execFileSync(process.execPath, [bin, 'new', 'page', '子页', '--dir=docs\\sub'], {
+      cwd: tmp,
+      stdio: 'pipe',
+      encoding: 'utf8',
+    });
+    assert(out.includes('/docs/sub/子页/'), '提示里的 URL 带了反斜杠：' + out.trim());
+    assert(fs.existsSync(path.join(tmp, 'content', 'docs', 'sub', '子页.md')), '文件没有落在 docs/sub');
+  });
+
+  await test('new 在非站点目录直接报错', () => {
+    // 之前会静默造出 content/posts/x.md，然后提示"xfm build 即可看到"
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-nosite-'));
+    try {
+      let code = 0;
+      let out = '';
+      try {
+        execFileSync(process.execPath, [bin, 'new', '随便写写'], { cwd: dir, stdio: 'pipe', encoding: 'utf8' });
+      } catch (e) {
+        code = e.status;
+        out = String(e.stdout || '') + String(e.stderr || '');
+      }
+      assert.strictEqual(code, 1, '应当报错退出，实际 ' + code);
+      assert(out.includes('不是 xfm 站点') && out.includes('xfm create'), '错误信息没有指路：' + out);
+      assert(!fs.existsSync(path.join(dir, 'content')), '仍然造出了 content 目录');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   await test('草稿不发布', () => {
