@@ -7,6 +7,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.12] - 2026-11-15
+
+Indented (four-space) code blocks now behave the same inside list items as outside,
+and the last "only fenced code works here" limitation is gone.
+
+### Fixed
+
+- **`-     code` (five spaces after the marker) rendered as plain text.** The item regex
+  swallowed every space after the marker, so the extra indentation that makes the first line
+  a code block was lost (`<li>code</li>`). Per CommonMark, 1–4 spaces after the marker are
+  padding while 5+ means one space of padding and the rest belongs to the content — the item
+  now starts with a code block, and following lines indented four past the content column
+  join it.
+- **Leading spaces leaked into paragraphs.** A paragraph line starting with 1–3 spaces kept
+  them (`<p>  code</p>`), which also showed up after a list item's content indent was
+  stripped. Up to three leading spaces are indentation and are dropped.
+
+Indented code blocks already worked in items after a blank line, inside blockquotes,
+`:::` containers and footnotes; those paths are unchanged.
+
 ## [0.4.11] - 2026-11-15
 
 Loose lists: a blank line no longer ends a list. Everything is still in
