@@ -315,6 +315,23 @@ async function testMarkdown() {
     assert(html.includes('<pre class="language-text">'), html);
     assert(html.includes('&lt;b&gt;'), html);
     assert(!html.includes('<b>'), '缩进代码块内容不应被当成 HTML');
+
+    // 段落行首 1–3 个空格只是缩进，不算内容
+    assert.strictEqual(renderMarkdown('   foo'), '<p>foo</p>');
+  });
+
+  await test('列表项首就是缩进代码块', () => {
+    // `-` 后 5 个空格：多出来的空格属于内容，构成项首的缩进代码块
+    const html = renderMarkdown('-     const a = 1\n      more\n- 下一项');
+    assert(html.includes('<pre class="language-text"><code>const a = 1\nmore</code></pre>'), html);
+    assert(!html.includes('<li>const a'), '代码内容被当成列表文字了：' + html);
+
+    const nested = renderMarkdown('- a\n  -     code\n        more');
+    assert(/<ul class="md-list"><li>a<ul class="md-list"><li><div class="code-block">/.test(nested), nested);
+
+    // 空行后接 4 空格（相对内容缩进只有 2 格）仍是段落，不是代码
+    const para = renderMarkdown('- foo\n\n    code');
+    assert(para.includes('<p>code</p>'), para);
   });
 
   await test('列表惰性续行', () => {
