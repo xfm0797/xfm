@@ -267,6 +267,43 @@ async function testMarkdown() {
     assert(after.includes('<p>后面这段是独立的</p>'), after);
   });
 
+  await test('松散列表：项之间有空行仍是同一个列表', () => {
+    const html = renderMarkdown('- a\n\n- b');
+    assert.strictEqual((html.match(/<ul[^>]*>/g) || []).length, 1, '拆成了多个列表：' + html);
+    assert(html.includes('<li><p>a</p></li><li><p>b</p></li>'), html);
+
+    const ol = renderMarkdown('3. 三\n\n4. 四');
+    assert(ol.startsWith('<ol start="3">') && ol.includes('<li><p>三</p></li>'), ol);
+  });
+
+  await test('松散列表：项内空行后的内容仍属该项', () => {
+    const html = renderMarkdown('- 第一段\n\n  第二段\n\n- 第二项');
+    assert.strictEqual((html.match(/<li>/g) || []).length, 2, html);
+    assert(html.includes('<li><p>第一段</p>'), html);
+    assert(html.includes('<p>第二段</p>'), html);
+    assert(html.includes('<li><p>第二项</p></li>'), html);
+
+    // 项内空行后接块级内容也认
+    const code = renderMarkdown('- 安装\n\n  ```bash\n  npm i\n  ```');
+    assert(code.includes('<li><p>安装</p>') && code.includes('code-block'), code);
+  });
+
+  await test('松散列表：空行属于外层，内层保持紧凑', () => {
+    const html = renderMarkdown('- a\n  - b\n\n- d');
+    assert(html.includes('<li><p>a</p>'), '外层应松散：' + html);
+    assert(html.includes('<ul class="md-list"><li>b</li></ul>'), '内层不该跟着松散：' + html);
+    assert(html.includes('<li><p>d</p></li>'), html);
+  });
+
+  await test('列表后的空行不会把后续段落吞进列表', () => {
+    const html = renderMarkdown('- a\n- b\n\n段落');
+    assert(html.includes('<li>a</li><li>b</li></ul>'), '紧凑列表不该被补 <p>：' + html);
+    assert(html.includes('<p>段落</p>'), html);
+    // 空行之后的惰性续行不算本项（CommonMark）
+    const lazy = renderMarkdown('- a\n\n无缩进的下一段');
+    assert(lazy.includes('<li>a</li></ul>') && lazy.includes('<p>无缩进的下一段</p>'), lazy);
+  });
+
   await test('Setext 标题', () => {
     const html = renderMarkdown('一级\n===\n\n二级\n---');
     assert(html.includes('<h1 id="一级">'), html);
