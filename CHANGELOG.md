@@ -7,6 +7,37 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.10] - 2026-11-15
+
+The three Markdown edge cases that had been sitting on the known-issues list, all in
+`lib/engine/markdown.js`.
+
+### Fixed
+
+- **Block content inside a list item is rendered as blocks.** `- 安装：` followed by an indented
+  fence used to be flattened into one text run (`<li>安装： npm i -g xfmpress</li>`), and an
+  indented `>` was escaped to `&gt;`. List items now collect their content at the item's content
+  indent and hand quote / fenced code / `:::` container / rule blocks to the block parser:
+  `<li><p>安装：</p><div class="code-block">…</div></li>`. `- 标题` + `  ---` keeps its Setext
+  meaning instead of turning into a rule.
+- **Footnote block content requires the canonical 4-space indent.** The old rule accepted 2
+  spaces and dedented up to 4, so a two-space nested list right after a footnote definition was
+  swallowed into the note. 4 spaces (or a tab) now means block content, 1–3 spaces still means
+  "same paragraph, next line" (no break for existing prose), and a following unindented paragraph
+  stays a paragraph.
+- **A link reference definition no longer interrupts a paragraph.** `collectDefinitions` pulled
+  every `[a]: /url` line out of the text, so one mid-paragraph definition split the paragraph in
+  two and removed a line from it. Definitions are now only collected at paragraph start, which is
+  also what CommonMark requires — a mid-paragraph `[a]: /url` stays literal text and does not
+  register a reference.
+- Default and docs themes: list items with block children no longer get extra leading/trailing
+  space from the child's `p` margin.
+
+### Tests
+
+128 → 131: list-item blocks (quote / fence / callout), paragraph-safe definitions, footnote
+indent boundaries.
+
 ## [0.4.9] - 2026-11-15
 
 A review pass over the CLI and the dev server: the eight fixes below are all cases where the
