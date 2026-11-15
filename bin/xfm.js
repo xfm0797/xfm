@@ -109,6 +109,7 @@ async function cmdBuild(args) {
       : `${extras.length} 个（${extras.slice(0, 4).join(', ')} …）`;
   console.log(`  ${paint(C.green, '✓')} 附加产物  ${extraLabel}`);
   console.log(`  ${paint(C.green, '✓')} 静态资源  ${site.stats.assets} 个`);
+  if (site.stats.unchanged) console.log(`  ${paint(C.green, '✓')} 未变化    ${site.stats.unchanged} 个文件（内容一致，未重写）`);
   console.log(`  ${paint(C.green, '✓')} 输出目录  ${paint(C.dim, path.relative(process.cwd(), outDir) || outDir)}（共 ${human(size.total)}）`);
   if (site.stats.workers) console.log(`  ${paint(C.green, '✓')} 并行渲染  ${site.stats.workers} 个 worker 线程`);
   if (site.stats.cached) console.log(`  ${paint(C.green, '✓')} 缓存命中  ${site.stats.cached} 页（增量构建）`);
