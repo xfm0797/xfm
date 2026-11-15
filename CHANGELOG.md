@@ -7,6 +7,48 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.9] - 2026-11-15
+
+A review pass over the CLI and the dev server: the eight fixes below are all cases where the
+tool happily produced the wrong result instead of complaining.
+
+### Fixed
+
+- **`xfm new` outside a site now errors out.** In an empty directory it used to create
+  `content/posts/<slug>.md` and then print "already publishable — `xfm build` and you'll see it",
+  while the build itself failed on the missing theme. It stops with the path, a hint to
+  `xfm create`, and creates nothing.
+- **`xfm create` recognises every config form.** Only `xfm.config.mjs` was checked, so a site
+  configured through `xfm.config.js` / `.cjs` / `.json`, or through a `"xfm"` field in
+  `package.json`, was overwritten without `--force` (`content/index.md`, `content/about.md`, the
+  starter post). `hasConfig()` now backs both this check and the dev-server config watcher.
+- **UTF-8 BOM no longer swallows front-matter.** A file saved as "UTF-8 with BOM" — the default of
+  several Windows editors — lost the whole block: the title fell back to the file path and
+  `date` / `layout` / `tags` vanished. The BOM is stripped before looking for `---`.
+- **The layout wins over a contradicting scaffold.** `scaffolds/draft.md` that still says
+  `draft: false` or `layout: page.html` (usual when it was copied from another template) produced
+  a *published* page while the CLI reported "won't appear in the build output". `layout`, `type`
+  and `draft` are now forced from the requested layout, and the reverse case — a `post` scaffold
+  with a leftover `draft: true` — is written back to `false` so the two never disagree.
+- **`--dir=` with backslashes** (`xfm new page about --dir=docs\sub`) echoed `/docs\sub/about/`
+  while the real URL was `/docs/sub/about/`. Paths are normalised before the summary, and `--dir`
+  now refuses to climb out of the content directory.
+- **Date-only front-matter is a local calendar day.** By spec `new Date('2026-11-10')` is UTC
+  midnight, so everything west of UTC rendered those posts one day early. Date-only and
+  `YYYY-MM-DD HH:mm` values are now constructed in local time explicitly; timestamped values keep
+  their time.
+- **dev server under a sub-path** (`site.base: '/blog/'`): the live-reload event stream follows
+  the base (`/blog/__xfm/events`), 404-page links carry the prefix, a half-closed browser
+  connection can no longer abort a rebuild, and `xfm.config.cjs` / `config.js` are watched like
+  the other config files instead of silently ignored.
+
+### Added
+
+- `xfm create` writes a `.gitignore` (`node_modules/`, `dist/`, `.xfm/`, OS junk) so the first
+  build no longer floods `git status`; an existing `.gitignore` is left untouched.
+- Tests 120 → 128 (BOM, date parsing, scaffold/layout conflicts, `--dir` normalisation, non-site
+  guard, config detection, `.gitignore`).
+
 ## [0.4.8] - 2026-11-10
 
 ### Added
