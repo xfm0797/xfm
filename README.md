@@ -197,7 +197,7 @@ Beyond GFM, the engine also understands:
 - **Setext headings** — `Title` followed by `====` (h1) or `----` (h2).
 - **Indented code blocks** — four leading spaces or a tab, outside lists.
 - **Escapes** — `\*not italic\*`, `` \`not code\` ``.
-- **Loose lists** — indented *and* unindented (lazy) continuation lines stay in the same item; ordered lists keep their start number.
+- **Loose lists** — a blank line between items (or inside one) no longer splits the list; it renders as a loose list with `<p>`-wrapped paragraphs, and indented content after the blank line stays in the same item. Indented *and* unindented (lazy) continuation lines stay in the same item; ordered lists keep their start number.
 
 In the `docs` theme, `group: Getting Started` plus `weight: 1` builds the sidebar navigation.
 
