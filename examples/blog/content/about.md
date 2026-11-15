@@ -16,5 +16,5 @@ description: XFM Notes 是一个用 XFM 搭建的示例博客。
 
 ## 联系方式
 
-- Telegram：[telegram](https://t.me/xfm520)
+- Telegram：[@xfm520](https://t.me/xfm520)
 - 邮件：[xfmpress@xfm.qzz.io](mailto:xfmpress@xfm.qzz.io)
