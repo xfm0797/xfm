@@ -56,18 +56,29 @@ async function phases() {
   console.log(`\n⚡ xfm benchmark — ${N} 篇，${os.cpus().length} 核，Node ${process.version}\n`);
   genSite();
 
-  const runs = [];
-  for (let i = 0; i < 5; i++) {
+  const distDir = path.join(dir, 'dist');
+  const run = () => {
     const t = performance.now();
     execFileSync(process.execPath, [BIN, 'build', dir], { stdio: 'pipe' });
-    runs.push(performance.now() - t);
+    return performance.now() - t;
+  };
+  const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2) || 0];
+
+  // 冷构建：每次都清空 dist，模拟 CI / 首次上线
+  const cold = [];
+  for (let i = 0; i < 3; i++) {
+    fs.rmSync(distDir, { recursive: true, force: true });
+    cold.push(run());
   }
-  runs.sort((a, b) => a - b);
-  const med = runs[2];
+  // 重复构建：产物都在，模拟改完一篇文章再 build
+  const warm = [];
+  for (let i = 0; i < 3; i++) warm.push(run());
 
   const p = await phases();
+  const rate = (ms) => (p.pages / (ms / 1000)).toFixed(0);
   console.log('分阶段（毫秒）:', p.T);
-  console.log(`\n端到端最优 ${runs[0].toFixed(0)}ms  中位 ${med.toFixed(0)}ms  ≈ ${(p.pages / (med / 1000)).toFixed(0)} 页/秒\n`);
+  console.log(`\n冷构建（dist 为空）   最优 ${Math.min(...cold).toFixed(0)}ms  中位 ${med(cold).toFixed(0)}ms  ≈ ${rate(med(cold))} 页/秒`);
+  console.log(`重复构建（产物未变）  最优 ${Math.min(...warm).toFixed(0)}ms  中位 ${med(warm).toFixed(0)}ms  ≈ ${rate(med(warm))} 页/秒\n`);
 
   fs.rmSync(dir, { recursive: true, force: true });
 })();
