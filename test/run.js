@@ -177,6 +177,34 @@ async function testMarkdown() {
     assert(!html.includes('<li>a段落'), html);
   });
 
+  await test('列表项里的引用与代码块按块渲染', () => {
+    const quote = renderMarkdown('1. 第一项\n   > 项内引用\n2. 第二项');
+    assert(quote.includes('<blockquote><p>项内引用</p></blockquote>'), quote);
+    assert(!quote.includes('&gt; 项内引用'), '引用被当成纯文本转义了：' + quote);
+    assert.strictEqual((quote.match(/<li>/g) || []).length, 2, quote);
+
+    const code = renderMarkdown('- 安装：\n  ```bash\n  npm i -g xfmpress\n  ```\n- 下一步');
+    assert(code.includes('<pre class="language-bash"><code>npm i -g xfmpress</code></pre>'), code);
+    assert(code.includes('<p>安装：</p>'), '块的上一行应成为独立段落：' + code);
+    // 代码内容不能被拼进 li 的文本里
+    assert(!code.includes('<li>安装： npm i -g xfmpress'), code);
+
+    const callout = renderMarkdown('- 提示\n  ::: tip 注意\n  内容\n  :::');
+    assert(callout.includes('callout-tip') && callout.includes('<li><p>提示</p>'), callout);
+  });
+
+  await test('引用定义不能打断段落', () => {
+    const html = renderMarkdown('前一句\n[a]: /x\n后一句\n\n[a] 还是引用吗');
+    assert.strictEqual((html.match(/<p>/g) || []).length, 2, '段落被定义行切断了：' + html);
+    assert(html.includes('前一句<br>'), '定义行没留在段落里：' + html);
+    // 段中的定义不生效，后面的 [a] 不应被解析成链接
+    assert(!html.includes('href="/x"'), '段中的定义被当成真定义了：' + html);
+
+    // 段首（空行之后）的定义照旧生效
+    const ok = renderMarkdown('见[文档][d]\n\n[d]: /docs/');
+    assert(ok.includes('href="/docs/"'), ok);
+  });
+
   await test('引用', () => {
     const html = renderMarkdown('> 引用文字');
     assert(html.includes('<blockquote>'), html);
@@ -217,6 +245,26 @@ async function testMarkdown() {
     assert(html.includes('[^zz]'), '未定义脚注应保持原样');
     assert(!html.includes('[^a]:'), '脚注定义不应输出');
     assert(html.indexOf('甲') < html.indexOf('乙'), '脚注应按首次引用顺序排列');
+  });
+
+  await test('脚注定义的块内容缩进 4 空格，2 空格不算', () => {
+    // 4 空格：列表属于脚注
+    const inside = renderMarkdown('正文[^a]\n\n[^a]: 说明\n    - 列表项');
+    assert(inside.includes('<li id="fn-a"><p>说明</p>'), inside);
+    assert(/<li id="fn-a">[\s\S]*md-list/.test(inside), '4 空格缩进的列表应进脚注：' + inside);
+
+    // 2 空格：只是段落续行，块内容留在正文（旧实现会吞进脚注）
+    const outside = renderMarkdown('正文[^a]\n\n[^a]: 说明\n  - 这是独立列表');
+    assert(outside.includes('<ul class="md-list"><li>这是独立列表</li></ul>'), outside);
+    assert(!/<li id="fn-a">[\s\S]*md-list/.test(outside), '2 空格的列表不应进脚注：' + outside);
+
+    // 2 空格缩进的普通文字仍算同一段（不破坏既有写法）
+    const text = renderMarkdown('正文[^a]\n\n[^a]: 第一行\n  第二行');
+    assert(/<li id="fn-a"><p>第一行<br>第二行<\/p>/.test(text), text);
+
+    // 紧跟脚注的独立段落不被吞掉
+    const after = renderMarkdown('正文[^a]\n\n[^a]: 说明\n后面这段是独立的');
+    assert(after.includes('<p>后面这段是独立的</p>'), after);
   });
 
   await test('Setext 标题', () => {
