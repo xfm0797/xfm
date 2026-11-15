@@ -280,6 +280,9 @@ main.wrap:has(.home) { max-width: 1160px; }
 .prose ul, .prose ol { margin: 0 0 1.2em; padding-left: 1.4em; }
 .prose li > ul, .prose li > ol { margin: .35em 0 .2em; padding-left: 1.2em; }
 .prose li { margin: .35em 0; }
+/* 列表项里有块级内容（引用 / 代码块 / 提示容器）时，首尾子块的 margin 会额外撑开行距 */
+.prose li > :first-child { margin-top: 0; }
+.prose li > :last-child { margin-bottom: 0; }
 .prose li::marker { color: var(--fg-faint); }
 .prose li.task { list-style: none; margin-left: -1.4em; display: flex; gap: .55em; align-items: baseline; }
 .task-box {
