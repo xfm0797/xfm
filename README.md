@@ -51,7 +51,8 @@ Benchmark: 4-core Windows machine, Node 22, 1,000 Chinese documents (~5 MB of HT
 
 | Metric | Value |
 | --- | --- |
-| Full cold build | **≈4.4–5.5 s** (≈180–230 pages/s) |
+| Full cold build (empty `dist`) | **≈5–6.5 s** (≈160–200 pages/s) |
+| Repeat build (output mostly unchanged) | **≈2.8–2.9 s** (≈340 pages/s) |
 | Render phase with warm cache | **1 ms** (1,001 pages) |
 | Render phase, 4 workers | **≈0.5 s** (1,000 pages) |
 | Dev hot rebuild of a single page | **2–7 ms** |
@@ -64,10 +65,15 @@ Per-stage timing (1,000 pages):
 | Scan & parse | ~690 ms | Parallel directory walk + parallel source reads; each file is read once |
 | Hashing | ~15 ms | Reuses the already-read source text, no second IO |
 | Render | ~510 ms | Worker pool reuses threads; site context is serialized once |
-| Write | ~3,800 ms | One `mkdir` per directory, two-phase parallel writes |
+| Write (cold) | ~2,600 ms | `mkdir` only for files that need writing, two-phase parallel writes |
+| Write (repeat build) | ~900 ms | Identical files are neither rewritten nor re-`mkdir`ed; no sweep when nothing was deleted |
 
-Writing dominates on Windows/NTFS: 1,000 small files cost more than parsing and rendering combined,
-and that stage is bounded by filesystem metadata operations rather than by the generator.
+Writing still dominates on Windows/NTFS: 1,000 `mkdir` calls cost ~1.1 s and flushing 1,000 pages
+~1.5 s, bounded by filesystem metadata rather than by the generator. Repeat builds therefore check
+content first: an identical file is neither rewritten nor given a new directory (`stat` plus one read
+is ~0.8 s, under a third of the cost). Stale-output cleanup only runs `rmdir` when something was
+actually deleted — it used to try 1,000 directories blindly for ~3 s, though an empty directory
+cannot exist in `dist` unless a file was just removed.
 
 Four design decisions carry the performance:
 
