@@ -40,6 +40,14 @@ layout: post.html
     $ xfm create my-blog
     $ cd my-blog && xfm dev
 
+列表项里照样能用，空行后缩进到条目的内容位置再多四格：
+
+- 从零开始三步走
+
+      $ npm i -g xfmpress
+      $ xfm create my-blog
+      $ xfm dev
+
 ## 有序列表可以从任意数字开始
 
 3. 第三步

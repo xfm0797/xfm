@@ -195,7 +195,7 @@ Beyond GFM, the engine also understands:
 - **Reference links** — `[text][id]`, shorthand `[id]`, resolved from a single `[id]: https://example.com "title"` definition (removed from the output).
 - **Footnotes** — `text[^1]` with `[^1]: the note`; numbered by first reference, with a back link per reference.
 - **Setext headings** — `Title` followed by `====` (h1) or `----` (h2).
-- **Indented code blocks** — four leading spaces or a tab, outside lists.
+- **Indented code blocks** — four leading spaces or a tab. They work inside list items too: after a blank line, indented four spaces past the item's content column, or written inline as `-     code` (five spaces after the marker; the extra space is content indentation).
 - **Escapes** — `\*not italic\*`, `` \`not code\` ``.
 - **Loose lists** — a blank line between items (or inside one) no longer splits the list; it renders as a loose list with `<p>`-wrapped paragraphs, and indented content after the blank line stays in the same item. Indented *and* unindented (lazy) continuation lines stay in the same item; ordered lists keep their start number.
 
