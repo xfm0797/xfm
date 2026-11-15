@@ -624,6 +624,52 @@ async function testBuild() {
     assert(rss.includes('你好，世界'), '文章未进入 rss');
   });
 
+  await test('重复构建：内容没变的页面不重写，改过的才重写', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-inc-'));
+    try {
+      scaffoldSite(dir, ['--template=blog', '--title=增量站']);
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+
+      const page = path.join(dir, 'dist', 'posts', 'hello-world', 'index.html');
+      const first = fs.readFileSync(page, 'utf8');
+      const mtime = fs.statSync(page).mtimeMs;
+
+      // 第二次：产物一致，应当整批跳过
+      const out = execFileSync(process.execPath, [bin, 'build', dir], { encoding: 'utf8' });
+      assert(/未变化/.test(out), '第二次构建没有报告跳过：' + out);
+      assert.strictEqual(fs.statSync(page).mtimeMs, mtime, '内容没变的页面被重写了');
+      assert.strictEqual(fs.readFileSync(page, 'utf8'), first, '产物内容变了');
+
+      // 改一篇文章：这一页重写，别的页面不动
+      const src = path.join(dir, 'content', 'posts', 'hello-world.md');
+      fs.appendFileSync(src, '\n\n新增的一段话。\n');
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      assert(fs.readFileSync(page, 'utf8').includes('新增的一段话'), '改过的页面没重写');
+      assert(fs.statSync(page).mtimeMs > mtime, '改过的页面 mtime 没变');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('删掉文章后旧产物与其目录一起清掉', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-inc-del-'));
+    try {
+      scaffoldSite(dir, ['--template=blog', '--title=清理站']);
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      const dirOut = path.join(dir, 'dist', 'posts', 'hello-world');
+      assert(fs.existsSync(path.join(dirOut, 'index.html')), '首次构建没产物');
+
+      fs.rmSync(path.join(dir, 'content', 'posts', 'hello-world.md'));
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      assert(!fs.existsSync(path.join(dirOut, 'index.html')), '陈旧页面没删掉');
+      assert(!fs.existsSync(dirOut), '空目录没清掉');
+      // 兄弟目录不能被误删
+      assert(fs.existsSync(path.join(dir, 'dist', 'about', 'index.html')), '误删了别的页面');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   await test('插件装了就生效：package.json 依赖自动发现，不必写配置', () => {
     const { Site } = require('../lib/engine/site');
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-plug-auto-'));
