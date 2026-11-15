@@ -7,6 +7,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.13] - 2026-11-15
+
+Write phase on a 1,000-page site: **5.3 s → 0.9 s** for a repeat build, with the cold build
+unchanged. Two separate wastes were found by counting filesystem calls.
+
+### Fixed
+
+- **`pruneStale` tried `rmdir` on every directory in `dist` on every build.** With 1,000 page
+  directories that is 1,000 failing `rmdir` calls, ~3.3 s sequentially on NTFS. A directory can
+  only become empty because a file inside it was deleted, so the sweep now runs only when
+  something was actually deleted, and only over the ancestors of those files (deepest first,
+  in parallel). No deletions → no `rmdir` at all.
+- **Unchanged pages were rewritten every time.** Every build flushed all pages to disk
+  (~1.5 s) and `mkdir`'d their directories (~1.1 s) even when the bytes were identical.
+  Output is now compared per file (size, then content) and skipped when it already matches;
+  a skipped file needs no directory either. Assets use the same idea with the make rule
+  (size equal and destination not older than source → leave it alone), so large images are
+  not read.
+
+### Added
+
+- `xfm build` reports `未变化 N 个文件（内容一致，未重写）` when files were skipped.
+- `bench/bench.js` now reports cold (`dist` removed) and repeat builds separately instead of
+  mixing them into one median.
+
 ## [0.4.12] - 2026-11-15
 
 Indented (four-space) code blocks now behave the same inside list items as outside,
