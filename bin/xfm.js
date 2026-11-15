@@ -156,6 +156,17 @@ async function cmdNew(args) {
   const root = path.resolve(process.cwd());
   const config = await loadConfig(root);
 
+  // 在随便一个目录里 xfm new 会静默造出 content/posts/x.md，然后提示"xfm build 即可看到"，
+  // 实际 build 找不到主题直接报错 —— 先确认脚下真是站点
+  const contentDir = path.resolve(root, config.contentDir);
+  if (!config.__source && !fs.existsSync(contentDir)) {
+    throw new Error(
+      `[xfm] 当前目录不是 xfm 站点：${root}\n` +
+        `  新建站点：xfm create <目录>\n` +
+        `  已经有站点：cd 到站点根目录（有 xfm.config.mjs 或 content/ 的那层）再执行`
+    );
+  }
+
   // `xfm new [布局] <标题>`：布局只在「有两个以上位置参数、且第一个是已知布局」时生效，
   // 所以 `xfm new 我的文章` 仍然是一篇文章，而不是一个叫「我的文章」的布局。
   const positional = (args._ || []).map(String);
@@ -186,7 +197,13 @@ async function cmdNew(args) {
   if (!title) title = layout === 'page' ? '未命名页面' : '未命名文章';
 
   // 页面默认落在 content 根目录（URL 就是 /<slug>/），文章与草稿落在 posts/
-  const dir = args.dir !== undefined ? String(args.dir) : spec.dir;
+  // 统一成 URL 风格的正斜杠：Windows 下 --dir=docs\sub 会把反斜杠带进提示里的 URL
+  const dir = (args.dir !== undefined ? String(args.dir) : spec.dir)
+    .replace(/\\/g, '/')
+    .replace(/^\.?\/+|\/+$/g, '');
+  if (dir.split('/').includes('..')) {
+    throw new Error(`[xfm] --dir 不能跳出内容目录：${args.dir}`);
+  }
   const draft = truthy(args.draft) || spec.draft;
 
   // slug：显式指定优先，否则由标题生成；纯符号标题回落到 post
@@ -207,15 +224,24 @@ async function cmdNew(args) {
 
   // 站点 scaffolds/<layout>.md 优先，否则用内置模板
   const tpl = templateFor(root, layout);
+  // 脚手架里本来就有 draft 字段：非草稿布局要把它按 false 写回去，
+  // 否则从草稿模板改来的 post 会一直是"已发布却不进产物"的状态
+  const scaffoldDraft = /^draft\s*:/m.test(tpl.text);
   let text = renderTemplate(tpl.text, { title, date, layout: spec.layout });
   text = normalizeFrontMatter(text);
-  text = ensureFrontMatter(text, {
-    title: JSON.stringify(String(title)),
-    date,
-    layout: spec.layout,
-    type: spec.type,
-    draft: draft ? 'true' : undefined,
-  });
+  // layout / type / draft 由命令里的布局决定：脚手架里写反了（比如 draft.md 里留着
+  // draft: false）也要覆盖，否则"草稿"会被直接发布出去
+  text = ensureFrontMatter(
+    text,
+    {
+      title: JSON.stringify(String(title)),
+      date,
+      layout: spec.layout,
+      type: spec.type,
+      draft: draft ? 'true' : scaffoldDraft ? 'false' : undefined,
+    },
+    ['layout', 'type', 'draft']
+  );
 
   await fs.promises.mkdir(path.dirname(file), { recursive: true });
   await fs.promises.writeFile(file, text);
