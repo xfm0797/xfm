@@ -7,6 +7,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.11] - 2026-11-15
+
+Loose lists: a blank line no longer ends a list. Everything is still in
+`lib/engine/markdown.js`.
+
+### Fixed
+
+- **A blank line between items split one list into two `<ul>`s.** `- a` + blank line + `- b`
+  produced two separate lists, which broke `ol` numbering, nested lists and any CSS that
+  styles `li + li`. Items separated by blank lines now stay in one list.
+- **Content after a blank line inside an item fell out of the list.** `- 第一段` + blank line +
+  ` 第二段` rendered the second paragraph outside the `li` (and at the wrong indent). Indented
+  content after a blank line now belongs to the item and is rendered by the block parser, so
+  a follow-up paragraph, a sub-list, a fenced code block or a quote all work.
+
+### Changed
+
+- Loose lists follow CommonMark's tight/loose rule: if any item is separated from its
+  neighbour by a blank line, or contains a blank line, every paragraph in that list is wrapped
+  in `<p>`. Tight lists are untouched (`<li>a</li>`), and an item with block content keeps the
+  `<p>` it already had. Blank lines after a list still end it, and lazy continuation is still
+  not allowed after a blank line.
+- A blank line that belongs to an outer list (e.g. `- a` / `  - b` / blank / `- d`) is handed
+  back to the outer list instead of marking the inner one loose.
+
 ## [0.4.10] - 2026-11-15
 
 The three Markdown edge cases that had been sitting on the known-issues list, all in
