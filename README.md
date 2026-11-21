@@ -358,6 +358,7 @@ The plugin manual — hook semantics, load order, every option, and a full autho
 | [`xfm-plugin-deadlinks`](./packages/deadlinks) | lists internal links that point nowhere | `deadlinks.strict`, `deadlinks.ignore` |
 | [`xfm-plugin-comments`](./packages/comments) | comments from giscus / beaudar / utterances / Disqus / Waline / Twikoo / Valine / Gitalk / Artalk / Cusdis | `comments.provider`, `comments.repo`, `comments.serverURL`, … |
 | [`xfm-plugin-analytics`](./packages/analytics) | Umami / Plausible / GA / Baidu / custom | `analytics.provider`, … |
+| [`xfm-plugin-share`](./packages/share) | share bar — weibo / wechat / qq / X / telegram / copy-link and more, zero external requests | `share.networks`, `share.title`, `share.dev` |
 
 **Upgrading from `xfm-plugin-giscus`?** That package is deprecated on npm — `xfm-plugin-comments`
 replaces it. The config key is still `comments`, so an existing `provider: 'giscus'` block keeps

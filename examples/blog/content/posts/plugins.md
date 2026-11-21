@@ -51,6 +51,7 @@ npm i -D xfm-plugin-sitemap xfm-plugin-rss xfm-plugin-search
 - **search**：`search.json` + `Ctrl/⌘+K` 面板
 - **seo** / **related**：社交元信息、相关推荐
 - **math** / **mermaid**：KaTeX 公式与流程图（见[另一篇](/posts/math-and-mermaid/)）
+- **share**：文章末尾的分享栏，微博 / 微信 / QQ / X / Telegram / 复制链接，零外部请求
 - **minify**、**pwa**、**image-size**、**deadlinks** …
 
 装了就生效；想固定加载顺序时再写进配置：

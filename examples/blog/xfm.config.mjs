@@ -28,8 +28,12 @@ export default {
   // 这里写短名只是为了固定加载顺序；写成 './plugins/x.js' 则是站点内的本地插件。
   plugins: [
     'sitemap', 'rss', 'reading-stats', 'feed-json', 'search', 'seo', 'related',
-    'llms', 'math', 'mermaid', 'minify', 'pwa', 'deadlinks',
+    'llms', 'math', 'mermaid', 'share', 'minify', 'pwa', 'deadlinks',
   ],
+  share: {
+    networks: ['weibo', 'wechat', 'qq', 'twitter', 'telegram', 'copy'],
+    title: '分享这篇文章',
+  },
   defaults: {
     layout: 'post.html',
   },

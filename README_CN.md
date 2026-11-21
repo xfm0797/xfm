@@ -342,6 +342,7 @@ export default {
 | [`xfm-plugin-deadlinks`](./packages/deadlinks) | 列出指向空处的站内链接 | `deadlinks.strict`、`deadlinks.ignore` |
 | [`xfm-plugin-comments`](./packages/comments) | 十家评论系统：giscus / beaudar / utterances / Disqus / Waline / Twikoo / Valine / Gitalk / Artalk / Cusdis | `comments.provider`、`comments.repo`、`comments.serverURL` … |
 | [`xfm-plugin-analytics`](./packages/analytics) | Umami / Plausible / GA / 百度 / 自定义 | `analytics.provider` … |
+| [`xfm-plugin-share`](./packages/share) | 分享栏：微博 / 微信 / QQ / X / Telegram / 复制链接等十二种，零外部请求 | `share.networks`、`share.title`、`share.dev` |
 
 **从 `xfm-plugin-giscus` 升级？** 那个包已在 npm 上标记弃用，由 `xfm-plugin-comments` 取代。配置键仍是
 `comments`，原来的 `provider: 'giscus'` 原样可用，只需换掉安装命令。
