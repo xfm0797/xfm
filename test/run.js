@@ -2307,6 +2307,24 @@ async function testExtras() {
       assert(json.total === 1, '死链数量不对：' + json.total);
       assert(json.links[0].href === '/missing/', '死链地址不对：' + json.links[0].href);
     });
+
+    await test('afterBuild 期间后运行的插件能看到前面插件的产物', async () => {
+      const { PluginSystem } = require('../lib/engine/plugins');
+      const ps = new PluginSystem({});
+      ps.use({ name: 'first', afterBuild: () => [{ path: '/assets/x/a.css', contents: 'x' }] });
+      const seen = [];
+      ps.use({
+        name: 'second',
+        afterBuild: (site) => {
+          seen.push(...(site.extraFiles || []).map((f) => f.path));
+          return [];
+        },
+      });
+      const site = { extraFiles: [] };
+      const out = await ps.call('afterBuild', [], site);
+      assert.strictEqual(out.length, 1, '产物数量不对');
+      assert.deepStrictEqual(seen, ['assets/x/a.css'], '后面的插件没看到前面的产物：' + seen.join(','));
+    });
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
