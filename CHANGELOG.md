@@ -30,6 +30,9 @@ to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 - **`documents[].inStream`** tells plugins whether a document belongs to the default stream;
   `xfm-plugin-rss`, `xfm-plugin-feed-json` (0.4.3) filter on it, and `xfm-plugin-related` (0.4.3)
   only recommends posts in the same language. `search.json` and `llms.txt` still index every page.
+- **`xfm-plugin-comments` 0.4.17** — README only, no code change: the plugin now states that it
+  replaces the deprecated `xfm-plugin-giscus` and that the `comments` config key is unchanged, so
+  upgrading is just a new install line.
 
 ## [0.4.16] - 2026-11-21
 

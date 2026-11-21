@@ -1,6 +1,6 @@
 {
   "name": "xfm-plugin-comments",
-  "version": "0.4.16",
+  "version": "0.4.17",
   "description": "Comment systems for xfmpress — giscus, beaudar, utterances, Disqus, Waline, Twikoo, Valine, Gitalk, Artalk, Cusdis",
   "type": "commonjs",
   "main": "index.js",
