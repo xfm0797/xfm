@@ -101,9 +101,10 @@ module.exports = (site) => {
         if (u.endsWith('/')) ok.add(u + 'index.html');
       }
       try {
-        const { themeAssets, publicFiles } = await site.assets();
+        const { themeAssets, publicFiles, contentAssets } = await site.assets();
         for (const a of themeAssets) add(a.dest);
         for (const f of publicFiles) add(f.dest);
+        for (const f of contentAssets || []) add(f.dest);
       } catch (e) { /* 资源清单拿不到就只比页面 */ }
       for (const f of site.extraFiles || []) add(f.path);
       for (const f of KNOWN_OUTPUTS) add(f);

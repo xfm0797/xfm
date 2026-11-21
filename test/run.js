@@ -1124,6 +1124,118 @@ async function testBuild() {
     }
   });
 
+  await test('Page Bundle：content 下的图片/附件随页面输出，相对与绝对链接都可用且不死链', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-bundle-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], ['image-size', 'deadlinks']);
+      fs.mkdirSync(path.join(dir, 'content', 'posts', 'hello'), { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, 'content', 'posts', 'hello', 'cover.png'),
+        Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+      );
+      fs.writeFileSync(
+        path.join(dir, 'content', 'posts', 'hello', 'index.md'),
+        '---\ntitle: 带图文章\n---\n\n![相对](./cover.png)\n\n![绝对](/posts/hello/cover.png)\n'
+      );
+      // content 根下的松散附件也应原样复制
+      fs.mkdirSync(path.join(dir, 'content', 'files'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'content', 'files', 'doc.pdf'), 'pdf-bytes');
+
+      const r = spawnSync(process.execPath, [bin, 'build', dir], { encoding: 'utf8' });
+      const output = r.stdout + r.stderr;
+      assert.strictEqual(r.status, 0, output);
+
+      assert(fs.existsSync(path.join(dir, 'dist', 'posts', 'hello', 'cover.png')), 'bundle 图片未复制');
+      assert(fs.existsSync(path.join(dir, 'dist', 'files', 'doc.pdf')), 'content 根附件未复制');
+      assert(!fs.existsSync(path.join(dir, 'dist', 'posts', 'hello', 'index.md')), '源 md 不该被复制');
+
+      const html = fs.readFileSync(path.join(dir, 'dist', 'posts', 'hello', 'index.html'), 'utf8');
+      assert(html.includes('src="./cover.png"'), '相对图片引用丢失：' + html);
+      assert(html.includes('src="/posts/hello/cover.png"'), '绝对图片引用丢失：' + html);
+      assert(/width="1"[\s\S]{0,80}height="1"/.test(html), 'image-size 未处理 bundle 图：' + html);
+      assert(!/发现\s+\d+\s*处/.test(output), 'bundle 图片被误报死链：' + output);
+      assert(!fs.existsSync(path.join(dir, 'dist', 'deadlinks.json')), '不应产出死链报告');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('Page Bundle：改文章配图后增量缓存失效并重渲染', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-bundle-cache-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], ['image-size']);
+      fs.mkdirSync(path.join(dir, 'content', 'posts', 'hello'), { recursive: true });
+      const cover = path.join(dir, 'content', 'posts', 'hello', 'cover.png');
+      const pageOut = path.join(dir, 'dist', 'posts', 'hello', 'index.html');
+      const png1x1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+      const png2x2 = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAC0lEQVR4nGNgQAYAAA4AAamRc7EAAAAASUVORK5CYII=';
+      fs.writeFileSync(cover, Buffer.from(png1x1, 'base64'));
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'hello', 'index.md'),
+        '---\ntitle: 配图文章\n---\n\n![cover](./cover.png)\n');
+      const run = (...f) => spawnSync(process.execPath, [bin, 'build', dir, ...f], { encoding: 'utf8' });
+
+      let r = run('--incremental');
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert(fs.readFileSync(pageOut, 'utf8').includes('width="1"'), '初始应为 1x1');
+
+      r = run('--incremental');
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert(/缓存命中/.test(r.stdout), '第二次应命中缓存：' + r.stdout);
+
+      // 换成 2x2：资源摘要变化 → 页面 hash 变化 → 缓存失效 → 重渲染
+      fs.writeFileSync(cover, Buffer.from(png2x2, 'base64'));
+      r = run('--incremental');
+      assert.strictEqual(r.status, 0, r.stderr);
+      const html = fs.readFileSync(pageOut, 'utf8');
+      assert(html.includes('width="2"'), '改图后页面未重渲染，仍是旧尺寸：' + html);
+      assert(!html.includes('width="1"'), '旧尺寸残留：' + html);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('Page Bundle：content 附件与 public 冲突时拒绝写盘', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-bundle-collision-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.mkdirSync(path.join(dir, 'content', 'posts', 'hello'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'hello', 'cover.png'), 'from-content');
+      const pub = path.join(dir, 'public', 'posts', 'hello', 'cover.png');
+      fs.mkdirSync(path.dirname(pub), { recursive: true });
+      fs.writeFileSync(pub, 'from-public');
+
+      const r = spawnSync(process.execPath, [bin, 'build', dir], { encoding: 'utf8' });
+      const output = r.stdout + r.stderr;
+      assert.strictEqual(r.status, 1, output);
+      assert(output.includes('输出路径冲突'), output);
+      assert(output.includes('cover.png'), output);
+      assert.strictEqual(fs.readFileSync(pub, 'utf8'), 'from-public', '冲突时不应改动源文件');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('dev server 直接服务 content Page Bundle 附件', async () => {
+    const { DevServer } = require('../lib/engine/server');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-bundle-dev-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.mkdirSync(path.join(dir, 'content', 'posts', 'hello'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'hello', 'cover.png'), 'dev-bundle-bytes');
+      const dev = new DevServer(dir, { port: 0 });
+      await dev.start();
+      try {
+        const res = await fetch(dev.url + 'posts/hello/cover.png');
+        assert.strictEqual(res.status, 200, 'dev 未服务 bundle 附件：' + res.status);
+        assert.strictEqual(Buffer.from(await res.arrayBuffer()).toString(), 'dev-bundle-bytes');
+      } finally {
+        await dev.close();
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   await test('.html 页面 URL 与产物路径一致', () => {
     fs.writeFileSync(path.join(tmp, 'content', 'raw.html'), '---\ntitle: 原始页\n---\n<h1>raw</h1>');
     execFileSync(process.execPath, [bin, 'build', tmp], { stdio: 'pipe' });

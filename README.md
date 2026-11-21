@@ -207,6 +207,25 @@ Beyond GFM, the engine also understands:
 
 In the `docs` theme, `group: Getting Started` plus `weight: 1` builds the sidebar navigation.
 
+### Page Bundle assets
+
+Files in `content/` that are not pages (anything except `.md` / `.markdown` / `.html` / `.htm`) — images, PDFs, zips — are copied to the output verbatim, preserving their path relative to `content/`. Keep an asset next to the page that uses it and link it relatively:
+
+```text
+content/posts/hello/
+  index.md      → /posts/hello/
+  cover.png     → /posts/hello/cover.png
+```
+
+Write `![cover](./cover.png)` in `index.md`. The relative URL resolves under the page's own URL, so the same source works with any `site.base`. Loose files elsewhere under `content/` (e.g. `content/files/doc.pdf`) are copied to the same path (`/files/doc.pdf`).
+
+- These assets go through the same output-collision check and stale-output cleanup as pages and `public/` files.
+- Editing a colocated asset invalidates the cache of pages in that directory (and the leaf-named subdirectory), so incremental builds re-render them.
+- In `dev` they are served directly from the source file — nothing is written to disk.
+- `xfm-plugin-image-size` and `xfm-plugin-deadlinks` already recognize them: dimensions are read from `./cover.png` and relative links are not flagged as dead.
+
+Dotfiles (names starting with `.`) are ignored.
+
 ## Hook semantics
 
 | Hook | Arguments | Return value |

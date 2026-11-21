@@ -197,6 +197,25 @@ xfm new page intro --dir=docs # content/docs/intro.md          → /docs/intro/
 
 `group: 使用指南` + `weight: 1` 字段可在 docs 主题生成侧栏导航。
 
+### Page Bundle：内容目录下的附件
+
+`content/` 下不是页面的文件（除 `.md` / `.markdown` / `.html` / `.htm` 之外的图片、PDF、zip 等）会原样复制到输出，路径保持相对 `content/` 不变。把附件和使用它的页面放在一起，用相对链接引用：
+
+```text
+content/posts/hello/
+  index.md      → /posts/hello/
+  cover.png     → /posts/hello/cover.png
+```
+
+在 `index.md` 里写 `![cover](./cover.png)`。相对 URL 会解析到页面自身 URL 之下，所以同一份源码换任何 `site.base` 都能用。散落在 `content/` 其他位置的文件（如 `content/files/doc.pdf`）也会按原路径复制（`/files/doc.pdf`）。
+
+- 这些附件和页面、`public/` 文件一样，参与产物冲突检测与旧产物清理。
+- 改动同目录附件会使该目录（以及叶子同名子目录）下页面的缓存失效，增量构建会重渲染。
+- `dev` 模式下直接从源文件服务，不落盘。
+- `xfm-plugin-image-size` 与 `xfm-plugin-deadlinks` 已兼容：能从 `./cover.png` 读尺寸，相对链接不会被误报死链。
+
+以 `.` 开头的隐藏文件会被忽略。
+
 ## 钩子语义
 
 | 钩子 | 参数 | 返回值处理 |

@@ -30,6 +30,7 @@ module.exports = (site) => {
   const cfg = site.config.imageSize || {};
   const base = normalizeBase((site.config.site || {}).base);
   const publicDir = path.resolve(site.root, cfg.publicDir || site.config.publicDir || 'public');
+  const contentDir = path.resolve(site.root, site.config.contentDir || 'content');
   const lazy = cfg.lazy !== false;
   const inDev = cfg.dev === true;
 
@@ -70,6 +71,7 @@ module.exports = (site) => {
     };
 
     safe(publicDir, rel);
+    safe(contentDir, rel); // Page Bundle：content/ 下与文章同目录的图片
     if (rel.startsWith('assets/') && site.theme && site.theme.dir) {
       safe(path.join(site.theme.dir, 'assets'), rel.slice('assets/'.length));
     }
@@ -104,6 +106,12 @@ module.exports = (site) => {
         // 剥 base 前缀，只留站点内裸路径
         src = src.split('#')[0].split('?')[0];
         if (base !== '/' && src.startsWith(base)) src = '/' + src.slice(base.length);
+        // 相对路径（./cover.png）按页面 URL 解析成站内绝对路径，支持 Page Bundle 配图
+        if (!src.startsWith('/')) {
+          const pageUrl = (ctx && ctx.view && ctx.view.url) || (page && page.url) || '/';
+          try { src = new URL(src, 'http://x.invalid' + pageUrl).pathname; } catch (e) { return tag; }
+          if (base !== '/' && src.startsWith(base)) src = '/' + src.slice(base.length);
+        }
         if (!src.startsWith('/')) return tag;
 
         const file = resolveFile(src);
