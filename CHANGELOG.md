@@ -7,6 +7,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [Unreleased]
+
+### Added
+
+- **Example site demos for 0.4.14** — `examples/blog` now exercises every new feature: a
+  `projects` custom collection (`/projects/` in the nav, kept out of the post stream), a
+  Chinese/English `about` translation pair with localized nav labels and `hreflang`, an
+  `authors.json` data file consumed by a site-local `plugins/author-byline.js` plugin that
+  injects the byline into posts, and a feature post whose list-card summary is the automatic
+  excerpt. The example changelog page is synced through 0.4.14.
+
+### Fixed
+
+- **Collection items leaked into RSS / JSON Feed.** Both feed plugins read `site.documents`
+  (not the post stream), so collection entries marked as independent still appeared in
+  `feed.xml` / `feed.json`. Non-`posts` collections now mark their items `rss: false`
+  (respecting an explicit front-matter `rss` value), which the feed plugins already honor.
+
 ## [0.4.14] - 2026-11-21
 
 ### Added

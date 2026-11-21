@@ -1,6 +1,7 @@
 ---
 title: 关于本站
 layout: page.html
+translationKey: about
 description: XFM Notes 是一个用 XFM 搭建的示例博客。
 ---
 

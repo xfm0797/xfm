@@ -1667,6 +1667,31 @@ async function testBuild() {
     assert(build('posts: true').includes('集合文章X'), 'posts:true 应进首页');
   });
 
+  await test('集合条目默认不进 RSS，posts:true 时保留', () => {
+    const build = (extra) => {
+      const d = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-col-rss-'));
+      try {
+        scaffoldSite(d, ['--template=blog'], ['rss']);
+        fs.mkdirSync(path.join(d, 'content', 'projects'), { recursive: true });
+        fs.writeFileSync(path.join(d, 'content', 'posts', 'normal.md'), '---\ntitle: 普通文章\ndate: 2020-04-04\n---\n正文\n');
+        fs.writeFileSync(path.join(d, 'content', 'projects', 'x.md'), '---\ntitle: 集合文章X\ndate: 2020-05-05\n---\n正文\n');
+        const cfg = path.join(d, 'xfm.config.mjs');
+        fs.writeFileSync(cfg, fs.readFileSync(cfg, 'utf8').replace(
+          "pagination: { perPage: 9 },",
+          `pagination: { perPage: 9 },\n  collections: { projects: { ${extra} } },`
+        ));
+        execFileSync(process.execPath, [bin, 'build', d], { stdio: 'pipe' });
+        return fs.readFileSync(path.join(d, 'dist', 'feed.xml'), 'utf8');
+      } finally {
+        fs.rmSync(d, { recursive: true, force: true });
+      }
+    };
+    const def = build('');
+    assert(def.includes('普通文章'), '普通文章应在 RSS 中');
+    assert(!def.includes('集合文章X'), '默认集合条目不应进 RSS');
+    assert(build('posts: true').includes('集合文章X'), 'posts:true 集合条目应保留在 RSS');
+  });
+
   await test('集合 perPage:0 不分页，单页列出全部', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-col-nopage-'));
     try {
