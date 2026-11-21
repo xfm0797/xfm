@@ -270,10 +270,14 @@ site: { lang: 'zh-CN', languages: ['zh-CN', 'en'] }
 ```
 
 - 页面语言取 front-matter 的 `lang`，缺省回退 `site.lang`；`<html lang>` 跟随当前页。
+- **文章流按语言分流**：`site.posts` 只含默认语言（`languages[0]`）的文章，归档、分类/标签/系列聚合、上下篇、RSS 与 JSON Feed 也一并只算默认语言——翻译版本不会在同一份列表里重复出现。其他语言的文章汇总在 `site.postsByLang[lang]`。
+- 每种有文章的非默认语言会自动生成 `/<lang>/` 列表页（含 `/<lang>/page/N/`），与首页共用同一个布局和 `pagination` 结构，`page.lang` 设为该语言，所以 `<html lang>`、导航本地化、语言切换器都对得上；该语言没有文章时不生成。
+- 列表页可读 `postsTotal`（当前列表文章总数，分页页与 `/<lang>/` 都是本语言的数字）。
 - front-matter 里 `translationKey` 相同的页面互为翻译，会拿到 `page.translations`——`[{ lang, url, title }]`。
 - 装了 `xfm-plugin-seo` 时，每个页面会为每个翻译版本注入 `<link rel="alternate" hreflang="…">` 及 `x-default`，并补上 `og:locale:alternate`。**单语站完全不输出这些**，现有产物保持不变。
-- default 与 docs 主题在导航里包含了 `lang-switcher.html` 片段（页面没有翻译时自动隐藏）。
+- default 与 docs 主题在导航里包含了 `lang-switcher.html` 片段（页面没有翻译时自动隐藏；多语言站的首页会自动拿到一份「语言首页」翻译表，所以 `/` 与 `/en/` 之间可以直接切）。
 - 导航本地化：给某个 nav 条目加 `translations` 映射——`{ title: '关于', url: '/about/', translations: { en: { title: 'About', url: '/about-en/' } } }`——引擎会按当前页语言选用对应条目。
+- `xfm-plugin-related` 只在同一语言内推荐，不会把英文版本推给中文文章。
 - 所有模板都能访问 `site.languages` 与 `site.defaultLang`。
 
 ## 钩子语义

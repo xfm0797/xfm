@@ -15,7 +15,7 @@ export default {
     copyright: '© 2026 XFM Notes · 保留所有权利',
     // nav 条目的 translations 按当前页语言解析标题与链接（多语言导航）
     nav: [
-      { title: '首页', url: '/', translations: { en: { title: 'Home' } } },
+      { title: '首页', url: '/', translations: { en: { title: 'Home', url: '/en/' } } },
       { title: '作品', url: '/projects/', translations: { en: { title: 'Projects' } } },
       { title: '分类', url: '/categories/', translations: { en: { title: 'Categories' } } },
       { title: '归档', url: '/archives/', translations: { en: { title: 'Archives' } } },

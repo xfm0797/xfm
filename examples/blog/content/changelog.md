@@ -2,19 +2,20 @@
 title: 更新日志
 layout: page.html
 type: page
-description: xfmpress 从 0.1.0 到 0.4.16 的全部版本记录，最新的在最前面。
+description: xfmpress 从 0.1.0 到 0.4.17 的全部版本记录，最新的在最前面。
 ---
 
 xfmpress 用 [语义化版本](https://semver.org/lang/zh-CN/)：补丁位从 `x.y.0` 一路滚到 `x.y.99`，再进 `x.y+1.0`（`0.4.99` → `0.5.0`）。新功能也走补丁位，所以版本号涨得比较快。英文原文在仓库的 `CHANGELOG.md`，本页随每次发版同步。
 
 ::: tip 当前版本
-**0.4.16** · 2026-11-21 · 评论插件扩成十家（giscus / Waline / Twikoo / Disqus …）；新增 KaTeX 公式与 Mermaid 图表插件。测试 176 项全绿。
+**0.4.17** · 2026-11-21 · 多语言站的文章流按语言分流：`site.posts` 只含默认语言，非默认语言各生成 `/<lang>/` 列表页。测试 178 项全绿。
 :::
 
 ## 版本一览
 
 | 版本 | 日期 | 类型 | 重点 |
 | --- | --- | --- | --- |
+| 0.4.17 | 2026-11-21 | 特性 | 文章流按语言分流：`site.posts` 只含默认语言、`/<lang>/` 语言首页、`site.postsByLang` |
 | 0.4.16 | 2026-11-21 | 特性 | 评论插件支持十家（giscus / beaudar / utterances / Disqus / Waline / Twikoo / Valine / Gitalk / Artalk / Cusdis） |
 | 0.4.15 | 2026-11-21 | 特性 | `xfm-plugin-math`（构建期 KaTeX）与 `xfm-plugin-mermaid`；修复插件产物可见性 |
 | 0.4.14 | 2026-11-21 | 特性 | `data/` 数据文件、`collections` 自定义集合、多语言 hreflang 与语言切换、`page.desc` 自动摘要 |
@@ -37,6 +38,21 @@ xfmpress 用 [语义化版本](https://semver.org/lang/zh-CN/)：补丁位从 `x
 | 0.2.0 | 2026-11-04 | 特性 | Markdown 大补：引用式链接、脚注、Setext、缩进代码块 |
 | 0.1.1 | 2026-11-03 | 文档 | 文档中英成对；dev 端口统一 4173 |
 | 0.1.0 | 2026-11-02 | 首个版本 | 零依赖静态站点生成器 |
+
+## 0.4.17 · 2026-11-21
+
+0.4.14 的多语言只做到「认得翻译」：`translationKey` 配对、`hreflang` 互指、导航里能切。文章流没管——中文首页会把英文文章一起列出来，分类计数把两种语言混算，RSS 里同一篇出现两遍。这一版把流拆开了。
+
+### 变更
+
+- **默认文章流只收默认语言**（`languages[0]`）：首页、`/page/N/`、归档、分类/标签/系列的索引与计数、`prev`/`next`、RSS 与 JSON Feed 一并按此过滤。翻译版本仍然保留自己的 URL 和 `hreflang`。
+- **每种非默认语言各有一版首页**：`/<lang>/` 加 `/<lang>/page/N/`，复用首页布局与 `pagination` 结构，`page.lang` 设为该语言，`<html lang>` 与导航本地化自然对上；该语言没有文章就不生成，URL 已被内容文件占用时让位。
+- **`site.postsByLang[lang]`**：每种语言自己的文章列表，模板直接取；列表页新增 `postsTotal`，`/en/` 上就是英文篇数（default 主题侧栏已改用它）。
+- **`documents[].inStream`**：告诉插件这篇属不属于默认流。`xfm-plugin-rss`、`xfm-plugin-feed-json`（0.4.3）据此过滤，`xfm-plugin-related`（0.4.3）只在同一语言内推荐；`search.json` 与 `llms.txt` 仍然索引全部页面。
+- **词条页保留全量**：`/tags/<name>/` 只按名字索引，只出现在英文里的标签/分类也会生成落地页，否则英文文章的标签链接就是死链；索引页仍只列默认语言。
+- **单语站零变化**：没声明 `languages`（或只声明一个）时不进入任何新分支，产物逐字节不变。
+
+本页所在的示例站就是演示：中文首页列不到本文的英文版，[/en/](/en/) 里只有英文那篇，两者靠 `translationKey: lang-stream` 互相切换。
 
 ## 0.4.16 · 2026-11-21
 

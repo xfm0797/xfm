@@ -283,10 +283,14 @@ site: { lang: 'en', languages: ['en', 'zh-CN'] }
 ```
 
 - A page's language is its front-matter `lang`, falling back to `site.lang`; `<html lang>` follows the page.
+- **The post stream is split per language**: `site.posts` only holds the default language (`languages[0]`). Archives, tag/category/series aggregation, prev/next, RSS and JSON Feed are filtered the same way, so a translation never shows up twice in one list. Posts in other languages are grouped in `site.postsByLang[lang]`.
+- Every non-default language that has posts gets its own list page at `/<lang>/` (plus `/<lang>/page/N/`), sharing the home layout and `pagination` shape. `page.lang` is set to that language, so `<html lang>`, localized nav and the language switcher all line up. A language without posts gets no page.
+- Listing templates can read `postsTotal` — the number of posts in the current list (per-language on `/<lang>/`).
 - Pages sharing a `translationKey` (front-matter) are translations of each other and receive `page.translations` — `[{ lang, url, title }]`.
 - With `xfm-plugin-seo`, each page gets `<link rel="alternate" hreflang="…">` for every translation plus `x-default`, and `og:locale:alternate` entries. **A single-language site outputs none of this**, so existing pages stay byte-identical.
-- The default and docs themes include a `lang-switcher.html` partial in the nav (hidden when a page has no translations).
+- The default and docs themes include a `lang-switcher.html` partial in the nav (hidden when a page has no translations; on a multilingual site the home page gets a synthetic translation table pointing at each `/<lang>/`, so `/` and `/en/` switch directly).
 - Localize the nav by giving an item a `translations` map: `{ title: 'About', url: '/about/', translations: { 'zh-CN': { title: '关于', url: '/about-zh/' } } }` — the engine serves the entry matching the current page's language.
+- `xfm-plugin-related` only recommends posts in the same language.
 - `site.languages` and `site.defaultLang` are available in every template.
 
 ## Hook semantics
