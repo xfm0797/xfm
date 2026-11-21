@@ -32,12 +32,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
+
+      # 同 CI：仓库不提交 lockfile，setup-node 的 cache: npm 会报错，改用显式缓存
+      - name: Restore npm cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-node22-${{ hashFiles('package.json', 'packages/*/package.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-node22-
 
       # 项目页是 /<repo>/，用户根站（<owner>.github.io）是 /
       - name: Resolve Pages base and URL
@@ -63,14 +72,14 @@ jobs:
         run: node bin/xfm.js build examples/blog
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
         with:
           # 首次运行时仓库还没开 Pages，试着用工作流令牌自动启用；
           # 若仓库策略不允许，去 Settings → Pages 把 Source 选为 GitHub Actions
           enablement: true
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: examples/blog/dist
 
@@ -83,4 +92,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

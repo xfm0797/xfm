@@ -24,16 +24,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: ['18', '20', '22']
+        # 矩阵从 22 起：xfm-plugin-mermaid 依赖的 mermaid@12 要求 node >= 22.12，
+        # 在 18 / 20 上 npm install 会打一堆 EBADENGINE 警告，测出来的结论也不代表
+        # 真实运行环境。内核本身仍声明 engines >= 18，单用内核不受影响。
+        node-version: ['22', '24']
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
-          cache: npm
+
+      # 仓库有意不提交 package-lock.json（内核零依赖，插件各带自己的依赖），
+      # 而 setup-node 的 `cache: npm` 必须有 lockfile，否则直接报
+      # "Dependencies lock file is not found" 并让整个 job 失败。
+      # 所以这里手动缓存 ~/.npm，键取所有 package.json 的哈希。
+      - name: Restore npm cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-node${{ matrix.node-version }}-${{ hashFiles('package.json', 'packages/*/package.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-node${{ matrix.node-version }}-
 
       # 内核零依赖；这里装的是 packages/ 下各个插件包（npm workspaces 就地软链）
       - name: Install workspace plugins
