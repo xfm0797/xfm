@@ -7,6 +7,36 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.14] - 2026-11-21
+
+### Added
+
+- **Global data files (`data/`)** — `.json` / `.yaml` / `.yml` / `.js` / `.mjs` files under `data/`
+  (configurable via `dataDir`) are exposed to every template and plugin as `site.data`; nested
+  directories become nested objects (`data/team/members.yml` → `site.data.team.members`). Editing a
+  data file invalidates all page caches; values are JSON-cloned so the worker payload stays safe.
+- **Custom collections** — `collections: { projects: { dir, url, layout, perPage, title, posts } }`
+  turns a content subdirectory into an independent section with its own list page `/projects/`,
+  real static pagination `/projects/page/2/…`, and `site.collections.<name>` in templates. Items
+  stay out of the default post stream, RSS and prev/next unless `posts: true`. Both themes ship a
+  `collection.html` layout.
+- **Multi-language (i18n)** — declare `site.languages`; per-page `lang` front-matter drives
+  `<html lang>`, pages sharing a `translationKey` become each other's translations
+  (`page.translations`), and `xfm-plugin-seo` injects `hreflang` alternates + `x-default` and
+  `og:locale:alternate`. A single-language site outputs none of this. Themes include a
+  `lang-switcher.html` partial, and nav items accept a `translations` map for localized labels/URLs.
+- **Auto excerpt fallback (`page.desc`)** — pages without `description` get an `excerpt` truncated
+  from the rendered body; templates can use `page.desc` (`description || excerpt`) in list cards
+  and meta tags. Both themes render `post.desc` in post lists.
+
+### Fixed
+
+- **Stale-output cleanup raced on directories.** `pruneStale` sorted directories deepest-first but
+  removed them with `Promise.all`, so a parent `rmdir` could run before its children were gone and
+  fail with `ENOTEMPTY` (silently swallowed), leaving empty directories behind — e.g. an old
+  `/tags/x/page/` shell surviving after `pagination.taxonomy` was turned off. Directories are now
+  removed sequentially, deepest first.
+
 ## [0.4.13] - 2026-11-15
 
 Write phase on a 1,000-page site: **5.3 s → 0.9 s** for a repeat build, with the cold build
