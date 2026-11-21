@@ -89,8 +89,14 @@ async function cmdBuild(args) {
 
   console.log(`\n${logo} ${paint(C.dim, 'build')}  ${paint(C.dim, root)}\n`);
 
-  const site = new Site(config, root, { mode: args.dev ? 'development' : 'production' });
-  // dev 模式 init() 内部已加载增量缓存，这里不再重复读一次
+  // build 始终保持生产语义；--dev 仅为旧版 --incremental 的兼容别名。
+  // 草稿只由配置或显式 CLI 选项控制，不再随缓存开关意外发布。
+  if (args.drafts !== undefined) config.buildDrafts = truthy(args.drafts);
+  if (truthy(args['no-drafts'])) config.buildDrafts = false;
+  const site = new Site(config, root, {
+    mode: 'production',
+    incremental: truthy(args.incremental) || truthy(args.dev),
+  });
   await site.init();
   await site.build();
 
@@ -427,7 +433,10 @@ ${paint(C.bold, '别名')}
 
 ${paint(C.bold, '选项')}
   --port=4173          dev 端口（默认 4173）
-  --dev                build 时启用增量缓存
+  --incremental        build 时启用增量缓存，不改变生产与草稿语义
+  --dev                等价于 --incremental（兼容旧用法）
+  --drafts             build 时包含草稿
+  --no-drafts          build 时排除草稿（覆盖 buildDrafts 配置）
   --template=docs      create 时使用文档模板
   --layout=page        new 的布局，等价于写在标题前的 post / page / draft
   --dir=posts          new 的落地目录（page 默认在 content 根目录）

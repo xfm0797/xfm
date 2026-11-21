@@ -178,10 +178,11 @@ xfm build
 耗时 30 ms
 ```
 
-重构建会走增量缓存，只重新渲染改动过的页面：
+显式启用增量缓存后，重构建只重新渲染改动过的页面：
 
 ```bash
-xfm build --dev     # 开发模式下也启用增量缓存
+xfm build --incremental  # 生产构建，默认不发布草稿
+xfm build --drafts       # 如需包含草稿，可与 --incremental 同用
 ```
 
 ### 5. 其他命令

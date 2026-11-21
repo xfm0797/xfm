@@ -109,7 +109,7 @@ npm i -g xfmpress      # 全局安装，然后直接使用 xfm 命令（Node ≥
 | --- | --- |
 | `xfm create [目录]` | 创建站点（`--template=blog\|docs`，`--title=`），别名 `xfm init` |
 | `xfm dev [目录]` | 开发服务器（`--port=`），别名 `serve` / `server` / `preview` |
-| `xfm build [目录]` | 生产构建（`--dev` 启用增量缓存），别名 `generate` / `gen` |
+| `xfm build [目录]` | 生产构建；`--incremental` 启用缓存，`--drafts` / `--no-drafts` 覆盖草稿配置；`--dev` 是 `--incremental` 的兼容别名。别名 `generate` / `gen` |
 | `xfm new [布局] "标题"` | 新建内容：`post` 文章（默认）/ `page` 页面 / `draft` 草稿；`--dir= --slug= --layout= --draft --force`，同名自动追加编号 |
 | `xfm clean` / `xfm info` | 清理产物 / 查看配置 |
 

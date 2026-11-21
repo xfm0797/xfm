@@ -110,7 +110,7 @@ npm i -g xfmpress      # then use the xfm command (Node >= 18)
 | --- | --- |
 | `xfm create [dir]` | Scaffold a site (`--template=blog\|docs`, `--title=`). Alias: `xfm init` |
 | `xfm dev [dir]` | Dev server (`--port=`). Aliases: `serve`, `server`, `preview` |
-| `xfm build [dir]` | Production build (`--dev` enables incremental cache). Aliases: `generate`, `gen` |
+| `xfm build [dir]` | Production build. `--incremental` enables cache; `--drafts` / `--no-drafts` override draft config. `--dev` remains a compatibility alias for `--incremental`. Aliases: `generate`, `gen` |
 | `xfm new [layout] "Title"` | New content — `post` (default) / `page` / `draft`; `--dir= --slug= --layout= --draft --force`, duplicate titles auto-number |
 | `xfm clean` / `xfm info` | Clean output / show config |
 

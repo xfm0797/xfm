@@ -603,7 +603,7 @@ async function testBuild() {
   console.log('\n端到端构建');
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-test-'));
-  const { execFileSync } = require('child_process');
+  const { execFileSync, spawnSync } = require('child_process');
   const bin = path.join(__dirname, '..', 'bin', 'xfm.js');
 
   scaffoldSite(tmp, ['--template=blog', '--title=测试站']);
@@ -977,6 +977,117 @@ async function testBuild() {
       '---\ntitle: 草稿测试\ndraft: true\n---\n草稿');
     execFileSync(process.execPath, [bin, 'build', tmp], { stdio: 'pipe' });
     assert(!fs.existsSync(path.join(tmp, 'dist', 'posts', 'draft-test', 'index.html')), '草稿被发布了');
+  });
+
+  await test('build 增量缓存与草稿开关解耦', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-build-modes-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.writeFileSync(
+        path.join(dir, 'content', 'posts', 'secret-draft.md'),
+        '---\ntitle: 私密草稿\ndate: 2026-01-01\ndraft: true\n---\n\n不应意外发布。\n'
+      );
+      const draftOutput = path.join(dir, 'dist', 'posts', 'secret-draft', 'index.html');
+      const run = (...flags) => spawnSync(process.execPath, [bin, 'build', dir, ...flags], { encoding: 'utf8' });
+
+      let r = run('--incremental');
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert(!fs.existsSync(draftOutput), '--incremental 发布了草稿');
+      assert(fs.existsSync(path.join(dir, '.xfm', 'cache.json')), '--incremental 没有写缓存');
+
+      r = run('--dev');
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert(/缓存命中/.test(r.stdout), '--dev 没有作为增量缓存别名工作：' + r.stdout);
+      assert(!fs.existsSync(draftOutput), '--dev 改变了生产构建的草稿语义');
+
+      r = run('--dev', '--drafts');
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert(fs.existsSync(draftOutput), '--drafts 没有包含草稿');
+
+      const configFile = path.join(dir, 'xfm.config.mjs');
+      fs.writeFileSync(
+        configFile,
+        fs.readFileSync(configFile, 'utf8').replace('export default {', 'export default {\n  buildDrafts: true,')
+      );
+      r = run('--incremental', '--no-drafts');
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert(!fs.existsSync(draftOutput), '--no-drafts 没有覆盖 buildDrafts 配置');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('生产增量构建不会复用开发模式的页面缓存', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-cache-mode-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.mkdirSync(path.join(dir, 'plugins'), { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, 'plugins', 'mode-marker.js'),
+        `module.exports = (site) => ({
+          name: 'mode-marker',
+          transformHtml(html) {
+            return html.replace('</body>', '<div>mode-marker:' + site.mode + '</div></body>');
+          },
+        });\n`
+      );
+
+      const { build } = require('../lib');
+      await build(dir, { mode: 'development' });
+      const indexFile = path.join(dir, 'dist', 'index.html');
+      assert(fs.readFileSync(indexFile, 'utf8').includes('mode-marker:development'));
+
+      const r = spawnSync(process.execPath, [bin, 'build', dir, '--incremental'], { encoding: 'utf8' });
+      assert.strictEqual(r.status, 0, r.stderr);
+      const html = fs.readFileSync(indexFile, 'utf8');
+      assert(html.includes('mode-marker:production'), '复用了开发模式缓存');
+      assert(!html.includes('mode-marker:development'));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('重复路由在清理和写盘前报错并列出两个来源', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-route-collision-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      for (const name of ['a', 'b']) {
+        fs.writeFileSync(
+          path.join(dir, 'content', name + '.md'),
+          `---\ntitle: ${name}\nurl: /collision/\nlayout: page.html\n---\n\n${name}\n`
+        );
+      }
+      fs.mkdirSync(path.join(dir, 'dist'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'dist', 'keep.txt'), 'do not prune');
+
+      const r = spawnSync(process.execPath, [bin, 'build', dir], { encoding: 'utf8' });
+      const output = r.stdout + r.stderr;
+      assert.strictEqual(r.status, 1, output);
+      assert(output.includes('输出路径冲突'), output);
+      assert(output.includes('a.md') && output.includes('b.md'), '错误信息没有列出两个内容来源：' + output);
+      assert(!fs.existsSync(path.join(dir, 'dist', 'collision', 'index.html')), '冲突页面仍然被写入');
+      assert.strictEqual(fs.readFileSync(path.join(dir, 'dist', 'keep.txt'), 'utf8'), 'do not prune', '冲突前清理了旧产物');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('页面与 public 资源产物冲突也会拒绝写盘', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-asset-collision-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      const asset = path.join(dir, 'public', 'about', 'index.html');
+      fs.mkdirSync(path.dirname(asset), { recursive: true });
+      fs.writeFileSync(asset, 'public asset');
+
+      const r = spawnSync(process.execPath, [bin, 'build', dir], { encoding: 'utf8' });
+      const output = r.stdout + r.stderr;
+      assert.strictEqual(r.status, 1, output);
+      assert(output.includes('about.md') && output.includes('资源'), output);
+      assert.strictEqual(fs.readFileSync(asset, 'utf8'), 'public asset');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   await test('.html 页面 URL 与产物路径一致', () => {

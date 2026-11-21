@@ -178,10 +178,11 @@ Output goes to `dist/`, fully static — drop it on Nginx, object storage, Verce
 done in 30 ms
 ```
 
-Rebuilds use the incremental cache and only re-render changed pages:
+Enable incremental caching to re-render only changed pages on rebuilds:
 
 ```bash
-xfm build --dev     # enable the incremental cache in dev mode too
+xfm build --incremental  # production build; drafts stay unpublished by default
+xfm build --drafts       # include drafts; can be combined with --incremental
 ```
 
 ### 5. Other commands
