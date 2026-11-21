@@ -1924,6 +1924,100 @@ async function testBuild() {
     }
   });
 
+  await test('多语言：文章流按语言分流，翻译版本不进列表/RSS/分类/prev-next', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-stream-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], ['rss', 'related']);
+      fs.rmSync(path.join(dir, 'content', 'posts', 'hello-world.md'), { force: true });
+      const probe = `{ name: 'probe', afterBuild(s) {
+  const byLang = {};
+  for (const [l, arr] of Object.entries(s.siteContext.postsByLang)) byLang[l] = arr.map((p) => p.url);
+  return [{ path: 'probe.json', contents: JSON.stringify({
+    posts: s.siteContext.posts.map((p) => p.url),
+    byLang,
+    cats: s.siteContext.categories.map((c) => c.name),
+    tags: s.siteContext.tags.map((t) => t.name),
+    docs: Object.fromEntries(s.documents.filter((p) => p.date && p.url !== '/').map((p) => [p.url, p.inStream])),
+  }) }];
+} }`;
+      let cfg = fs.readFileSync(path.join(dir, 'xfm.config.mjs'), 'utf8');
+      cfg = cfg.replace("    lang: 'zh-CN',", "    lang: 'zh-CN',\n    languages: ['zh-CN', 'en'],");
+      cfg = cfg.replace('pagination: { perPage: 9 },', 'pagination: { perPage: 2 },');
+      cfg = cfg.replace(/^};\s*$/m, `  plugins: [\n    'rss',\n    'related',\n    ${probe},\n  ],\n};\n`);
+      fs.writeFileSync(path.join(dir, 'xfm.config.mjs'), cfg);
+
+      const write = (name, body) => fs.writeFileSync(path.join(dir, 'content', 'posts', name), body);
+      write('zh-1.md', '---\ntitle: 中文一\ndate: 2026-01-04\nlang: zh-CN\ncategory: 随笔\ntags: [zh]\ntranslationKey: one\n---\n中文一\n');
+      write('zh-2.md', '---\ntitle: 中文二\ndate: 2026-01-03\nlang: zh-CN\ncategory: 随笔\ntags: [zh]\n---\n中文二\n');
+      write('zh-3.md', '---\ntitle: 中文三\ndate: 2026-01-02\nlang: zh-CN\ncategory: 随笔\n---\n中文三\n');
+      write('zh-4.md', '---\ntitle: 中文四\ndate: 2026-01-01\nlang: zh-CN\ncategory: 随笔\n---\n中文四\n');
+      write('en-1.md', '---\ntitle: English one\ndate: 2026-01-04\nlang: en\ncategory: Notes\ntags: [en]\ntranslationKey: one\n---\nEnglish one\n');
+      write('en-2.md', '---\ntitle: English two\ndate: 2026-01-03\nlang: en\ncategory: Notes\ntags: [en]\n---\nEnglish two\n');
+      write('en-3.md', '---\ntitle: English three\ndate: 2026-01-02\nlang: en\ncategory: Notes\ntags: [en]\n---\nEnglish three\n');
+
+      execFileSync(process.execPath, [BIN, 'build', dir], { stdio: 'pipe' });
+      const read = (rel) => fs.readFileSync(path.join(dir, 'dist', rel), 'utf8');
+
+      const info = JSON.parse(read('probe.json'));
+      assert.deepStrictEqual(
+        info.posts,
+        ['/posts/zh-1/', '/posts/zh-2/', '/posts/zh-3/', '/posts/zh-4/'],
+        '默认文章流混进了翻译版本：' + info.posts.join(',')
+      );
+      assert.deepStrictEqual(info.byLang['en'], ['/posts/en-1/', '/posts/en-2/', '/posts/en-3/'], 'postsByLang.en 不对');
+      assert.deepStrictEqual(info.byLang['zh-CN'], info.posts, 'postsByLang 的默认语言应等于 site.posts');
+      assert.deepStrictEqual(info.cats, ['随笔'], '分类聚合混进了其它语言：' + info.cats.join(','));
+      assert.deepStrictEqual(info.tags, ['zh'], '标签聚合混进了其它语言：' + info.tags.join(','));
+      // 词条页必须覆盖非默认语言，否则英文文章的 /categories/Notes/ 链接就是死链
+      assert(fs.existsSync(path.join(dir, 'dist', 'categories', 'Notes', 'index.html')), '其它语言独有的分类缺落地页');
+      assert(fs.existsSync(path.join(dir, 'dist', 'tags', 'en', 'index.html')), '其它语言独有的标签缺落地页');
+      assert(!read('categories/index.html').includes('Notes'), '分类索引不该列出其它语言的分类');
+      assert.strictEqual(info.docs['/posts/zh-1/'], true, '默认语言文档 inStream 应为 true');
+      assert.strictEqual(info.docs['/posts/en-1/'], false, '翻译版本文档 inStream 应为 false');
+
+      const home = read('index.html');
+      assert(home.includes('中文一') && home.includes('中文二') && !home.includes('English one'), '首页文章流不对');
+      assert(home.includes('共 4 篇文章'), '首页文章数应为默认语言的 4 篇');
+      assert(read('page/2/index.html').includes('中文四'), '/page/2/ 内容不对');
+      assert(!read('archives/index.html').includes('English one'), '归档混进了英文文章');
+      assert(!read('feed.xml').includes('English one'), 'RSS 混进了英文文章');
+
+      const enHome = read('en/index.html');
+      assert(/<html lang="en">/.test(enHome), '/en/ 的 html lang 不对');
+      assert(enHome.includes('English one') && !enHome.includes('中文一'), '/en/ 列表内容不对');
+      assert(enHome.includes('共 3 篇文章'), '/en/ 的文章数应是 3 篇');
+      assert(enHome.includes('/en/page/2/'), '/en/ 缺下一页链接');
+      assert(read('en/page/2/index.html').includes('English three'), '/en/page/2/ 内容不对');
+      assert(enHome.includes('lang-switcher') && enHome.includes('href="/"'), '/en/ 缺切回默认语言的链接');
+      assert(home.includes('href="/en/"'), '首页缺切到 /en/ 的链接');
+
+      const zh1 = read('posts/zh-1/index.html');
+      assert(zh1.includes('class="prev" href="/posts/zh-2/"'), '中文前后篇应停在中文里：' + zh1.slice(zh1.indexOf('post-footer'), zh1.indexOf('post-footer') + 200));
+      const en1 = read('posts/en-1/index.html');
+      assert(en1.includes('class="prev" href="/posts/en-2/"'), '英文前后篇应停在英文里');
+      const related = (/<section class="related">([\s\S]*?)<\/section>/.exec(zh1) || [])[1] || '';
+      assert(related && !related.includes('/posts/en-'), '相关推荐串到了英文版本');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('单语站：页面写 lang 也不影响文章流，不生成语言首页', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-mono-stream-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.rmSync(path.join(dir, 'content', 'posts', 'hello-world.md'), { force: true });
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'a.md'), '---\ntitle: A\ndate: 2026-01-02\nlang: en\n---\n');
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'b.md'), '---\ntitle: B\ndate: 2026-01-01\n---\n');
+      execFileSync(process.execPath, [BIN, 'build', dir], { stdio: 'pipe' });
+      const home = fs.readFileSync(path.join(dir, 'dist', 'index.html'), 'utf8');
+      assert(home.includes('>A<') && home.includes('>B<'), '单语站的 lang 字段不该把页面剔出文章流');
+      assert(!fs.existsSync(path.join(dir, 'dist', 'en')), '单语站不该生成语言首页 /en/');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   await test('模板注释 {# #} 不输出', () => {
     const html = compile('a{# 隐藏 #}b{% for i in [1] %}c{# 循环内注释 #}{% endfor %}')({});
     assert.strictEqual(html, 'abc');
