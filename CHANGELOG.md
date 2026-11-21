@@ -7,6 +7,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.17] - 2026-11-21
+
+### Changed
+
+- **The post stream is split per language.** On a site that declares `site.languages`, `site.posts`
+  now only contains posts in the default language (`languages[0]`); archives, tag/category/series
+  aggregation, `prev`/`next`, RSS and JSON Feed are filtered the same way, so a translation no
+  longer shows up a second time in the home list, the category counts or the feed. Posts in other
+  languages stay reachable (and keep their `hreflang`) and are grouped in `site.postsByLang[lang]`.
+  Single-language sites take the old code path untouched — the filter only engages when more than
+  one language is declared, so existing output stays byte-identical.
+- **Per-language list pages.** Every non-default language that has posts gets `/<lang>/` plus
+  `/<lang>/page/N/`, rendered with the home layout and the same `pagination` shape, with
+  `page.lang` set so `<html lang>`, localized nav labels and the language switcher all match. The
+  page is skipped when the language has no posts, or when a content file already owns that URL.
+  A multilingual home page also gets a synthetic `page.translations` table (`/` ↔ `/en/`), so the
+  switcher works from the front page.
+- **`postsTotal`** is available in listing templates — the post count of the current list, which is
+  the per-language number on `/<lang>/` (the default theme's sidebar uses it instead of
+  `site.posts.length`).
+- **`documents[].inStream`** tells plugins whether a document belongs to the default stream;
+  `xfm-plugin-rss`, `xfm-plugin-feed-json` (0.4.3) filter on it, and `xfm-plugin-related` (0.4.3)
+  only recommends posts in the same language. `search.json` and `llms.txt` still index every page.
+
 ## [0.4.16] - 2026-11-21
 
 ### Changed
