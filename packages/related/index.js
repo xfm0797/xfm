@@ -39,6 +39,13 @@ module.exports = (site) => {
   return {
     name: 'related',
 
+    // 相关文章是 afterCollect 注入的跨页数据：别的文章改标签会改变本页推荐，
+    // 必须参与页面缓存哈希，否则增量构建会留下旧的相关推荐。
+    cacheKey(page) {
+      const r = page.data && page.data.related;
+      return Array.isArray(r) ? r.map((x) => (x && x.url) || x).join(',') : '';
+    },
+
     afterCollect(site) {
       const posts = (site.pages || []).filter((p) => p.date && p.url !== '/' && p.data.type !== 'page');
       if (posts.length < 2) return;

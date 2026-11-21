@@ -1,0 +1,46 @@
+name: CI
+
+# 独立于 Pages 部署的测试流水线：覆盖 PR 与 main 推送，
+# 多 Node 版本矩阵，核心与 packages/ 任何改动都会触发。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同一分支的新提交取消进行中的旧运行，避免排队浪费
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['18', '20', '22']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      # 内核零依赖；这里装的是 packages/ 下各个插件包（npm workspaces 就地软链）
+      - name: Install workspace plugins
+        run: npm install --no-audit --no-fund
+
+      - name: Run tests
+        run: node test/run.js
+
+      - name: Build example site
+        run: node bin/xfm.js build examples/blog

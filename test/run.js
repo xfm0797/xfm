@@ -1047,6 +1047,40 @@ async function testBuild() {
     }
   });
 
+  await test('插件代码改动会使增量缓存失效', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-plugin-cache-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.mkdirSync(path.join(dir, 'plugins'), { recursive: true });
+      const pluginFile = path.join(dir, 'plugins', 'marker.js');
+      const writePlugin = (word) => fs.writeFileSync(
+        pluginFile,
+        `module.exports = () => ({ name: 'marker', transformHtml(html) { return html.replace('</body>', '<div id="m">${word}</div></body>'); } });\n`
+      );
+      writePlugin('v1');
+      const indexFile = path.join(dir, 'dist', 'index.html');
+      const run = (...flags) => spawnSync(process.execPath, [bin, 'build', dir, ...flags], { encoding: 'utf8' });
+
+      let r = run('--incremental');
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert(fs.readFileSync(indexFile, 'utf8').includes('id="m">v1'), '初始插件产物缺失');
+
+      r = run('--incremental');
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert(/缓存命中/.test(r.stdout), '未命中缓存：' + r.stdout);
+      assert(fs.readFileSync(indexFile, 'utf8').includes('id="m">v1'));
+
+      writePlugin('v2');
+      r = run('--incremental');
+      assert.strictEqual(r.status, 0, r.stderr);
+      const html = fs.readFileSync(indexFile, 'utf8');
+      assert(html.includes('id="m">v2'), '插件改动后缓存未失效');
+      assert(!html.includes('id="m">v1'), '旧插件产物残留');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   await test('重复路由在清理和写盘前报错并列出两个来源', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-route-collision-'));
     try {
@@ -1377,6 +1411,44 @@ async function testConsistency() {
       assert(page.html.includes('新标题'), '配置未热重载');
     } finally {
       await dev2.close();
+      fs.rmSync(srvRoot, { recursive: true, force: true });
+    }
+  });
+
+  await test('dev 插件代码改动会热重载并重新渲染', async () => {
+    const { DevServer } = require('../lib/engine/server');
+    const srvRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-dev-plugin-'));
+    try {
+      fs.mkdirSync(path.join(srvRoot, 'content'), { recursive: true });
+      fs.mkdirSync(path.join(srvRoot, 'plugins'), { recursive: true });
+      fs.writeFileSync(path.join(srvRoot, 'xfm.config.mjs'), `export default { site: { title: 'T' }, theme: 'default' };\n`);
+      fs.writeFileSync(path.join(srvRoot, 'content', 'x.md'), '---\ntitle: X\nlayout: page.html\n---\n\nhi\n');
+      const pluginFile = path.join(srvRoot, 'plugins', 'marker.js');
+      const writePlugin = (word) => fs.writeFileSync(
+        pluginFile,
+        `module.exports = () => ({ name: 'marker', transformHtml(html) { return html.replace('</body>', '<div id="m">${word}</div></body>'); } });\n`
+      );
+      writePlugin('old');
+
+      const dev = new DevServer(srvRoot, { port: 0 });
+      await dev.start();
+      try {
+        const markerCount = () => dev.site.plugins.names().filter((n) => n === 'marker').length;
+        let page = dev.site.pages.find((p) => p.url === '/x/');
+        assert(page.html.includes('id="m">old'), '初始插件未生效');
+        assert.strictEqual(markerCount(), 1, '插件重复注册');
+
+        writePlugin('new');
+        await dev.reloadPlugins();
+        await dev.rebuild();
+        page = dev.site.pages.find((p) => p.url === '/x/');
+        assert(page.html.includes('id="m">new'), '插件改动未热重载');
+        assert(!page.html.includes('id="m">old'), '旧插件产物残留');
+        assert.strictEqual(markerCount(), 1, '重载后插件重复注册');
+      } finally {
+        await dev.close();
+      }
+    } finally {
       fs.rmSync(srvRoot, { recursive: true, force: true });
     }
   });
