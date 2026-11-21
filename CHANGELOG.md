@@ -7,6 +7,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.18] - 2026-11-22
+
+### Added
+
+- **`xfm-plugin-share`** (first release, 0.4.18) — a share bar at the end of every post,
+  twelve targets behind one `share.networks` list: `weibo`, `wechat`, `qq`, `qzone`,
+  `twitter`, `facebook`, `linkedin`, `telegram`, `whatsapp`, `reddit`, `email`, `copy`
+  (aliases `x` → `twitter`, `mail` → `email`). Zero dependencies and zero external requests:
+  outbound links are plain `<a>` tags, and copy-type buttons (`copy`, `wechat`) use a small
+  inline script — clipboard API with an `execCommand` fallback plus a toast — embedding the
+  page URL in `data-share-url` at build time. Mounts only on posts (front-matter `share: false`
+  opts a page out; a template's `<div data-xfm-share></div>` overrides placement and the plugin
+  only appends the script). Share links need `site.url` for a full address; the plugin still
+  renders without it but logs one reminder per build. The core itself has no code changes in
+  this release.
+
 ## [0.4.17] - 2026-11-21
 
 ### Changed
