@@ -40,7 +40,7 @@ disagree, the manual wins.
 | [Content & Markdown](https://doc.lovou.pw/docs/xfmpress/content/) | front-matter, directory conventions, URL rules, extended syntax | writing |
 | [Templates](https://doc.lovou.pw/docs/xfmpress/templates/) | variables, filters, control flow, inheritance, context | editing layouts |
 | [Theme development](https://doc.lovou.pw/docs/xfmpress/theme/) | directory layout, layout and partial responsibilities, bundling assets | building a theme |
-| [Plugins](https://doc.lovou.pw/docs/xfmpress/plugins/) | hook semantics, auto-loading, the fifteen official plugins, writing your own | extending |
+| [Plugins](https://doc.lovou.pw/docs/xfmpress/plugins/) | hook semantics, auto-loading, the official plugins, writing your own | extending |
 | [Build & deploy](https://doc.lovou.pw/docs/xfmpress/deploy/) | incremental cache, sub-paths, GitHub Pages / Netlify / Nginx | shipping |
 | [Architecture](https://doc.lovou.pw/docs/xfmpress/architecture/) | render pipeline, worker pool, cache fingerprints, reading the bench | understanding internals |
 | [Changelog](https://doc.lovou.pw/docs/xfmpress/changelog/) | release history from v0.1.0 onward | evaluating an upgrade |
@@ -89,7 +89,7 @@ Four design decisions carry the performance:
 ## Features
 
 - **Themes**: `{% extend %}` / `{% block %}` template inheritance, `{% include %}` partials, `{# comments #}`, CSS-variable light/dark themes. Ships `default` (blog) and `docs` (sidebar documentation).
-- **Plugins**: six hooks (`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`). **Nothing is bundled with the core** — install plugins from npm like Hexo (`npm i -D xfm-plugin-rss`) and they load themselves; fifteen official ones live in [`packages/`](./packages).
+- **Plugins**: six hooks (`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`). **Nothing is bundled with the core** — install plugins from npm like Hexo (`npm i -D xfm-plugin-rss`) and they load themselves; seventeen official ones live in [`packages/`](./packages).
 - **Content**: YAML front-matter, drafts, tag/category/series taxonomies, automatic prev/next, `weight` ordering, and relative `.md` links resolved automatically. Every term gets a real page at `/tags/<name>/`, `/categories/<name>/` and `/series/<name>/`, with encoded URLs written out as readable directories. The default theme also ships a category index (`/categories/`) and a year-grouped archive (`/archives/`), driven by the `indexes` config block and generated only when the theme provides the layout. The post sidebar table of contents highlights the section you are currently reading as you scroll.
 - **Developer experience**: `xfm dev` builds in memory with SSE hot reload (keeps your scroll position), hot-swaps CSS separately, and lists available routes on 404.
 - **Easy to migrate**: template syntax follows Nunjucks/Liquid conventions; config supports `.mjs/.js/.json`.
@@ -347,6 +347,8 @@ The plugin manual — hook semantics, load order, every option, and a full autho
 | --- | --- | --- |
 | [`xfm-plugin-seo`](./packages/seo) | canonical, Open Graph, Twitter Card, JSON-LD | `seo.image`, `seo.twitter`, `seo.jsonLd` |
 | [`xfm-plugin-related`](./packages/related) | related posts → `page.data.related` | `related.limit`, `related.minScore` |
+| [`xfm-plugin-math`](./packages/math) | KaTeX formulas rendered at build time — no client JS | `math.css`, `math.path`, `math.macros`, `math.fonts` |
+| [`xfm-plugin-mermaid`](./packages/mermaid) | mermaid fenced blocks → SVG diagrams in the browser | `mermaid.mode`, `mermaid.theme`, `mermaid.securityLevel` |
 | [`xfm-plugin-minify`](./packages/minify) | smaller HTML (production only) | `minify.enabled`, `minify.aggressive` |
 | [`xfm-plugin-image-size`](./packages/image-size) | `width`/`height` on `&lt;img&gt;`, read from the file header | `imageSize.publicDir`, `imageSize.lazy` |
 | [`xfm-plugin-deadlinks`](./packages/deadlinks) | lists internal links that point nowhere | `deadlinks.strict`, `deadlinks.ignore` |

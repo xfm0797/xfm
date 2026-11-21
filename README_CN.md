@@ -37,7 +37,7 @@ xfm build            # 生产构建
 | [内容与 Markdown](https://doc.lovou.pw/docs/xfmpress/content/) | front-matter、目录约定、URL 规则、扩展语法 | 写内容 |
 | [模板语法](https://doc.lovou.pw/docs/xfmpress/templates/) | 变量、过滤器、控制结构、继承、模板上下文 | 改布局 |
 | [主题开发](https://doc.lovou.pw/docs/xfmpress/theme/) | 目录结构、布局与片段的职责、资源打包 | 做主题 |
-| [插件](https://doc.lovou.pw/docs/xfmpress/plugins/) | 钩子语义、自动加载、15 个官方插件、自己写插件 | 扩能力 |
+| [插件](https://doc.lovou.pw/docs/xfmpress/plugins/) | 钩子语义、自动加载、官方插件清单、自己写插件 | 扩能力 |
 | [构建与部署](https://doc.lovou.pw/docs/xfmpress/deploy/) | 增量缓存、子路径、GitHub Pages / Netlify / Nginx | 上线 |
 | [架构与性能](https://doc.lovou.pw/docs/xfmpress/architecture/) | 渲染管线、worker 池、缓存指纹、bench 读法 | 想搞懂原理 |
 | [版本记录](https://doc.lovou.pw/docs/xfmpress/changelog/) | v0.1.0 以来的版本主线 | 评估升级 |
@@ -84,7 +84,7 @@ xfm build            # 生产构建
 ## 特性
 
 - **主题**：`{% extend %}` / `{% block %}` 模板继承、`{% include %}` 片段、`{# 注释 #}`、CSS 变量深浅色主题；内置 `default`（博客）与 `docs`（侧栏文档）两套主题。
-- **插件**：六个钩子（`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`）。**内核不带任何插件** —— 像 Hexo 一样从 npm 装（`npm i -D xfm-plugin-rss`），装了就自动生效；15 个官方插件在 [`packages/`](./packages) 里独立发布。
+- **插件**：六个钩子（`extendContext` / `markdown` / `transformHtml` / `afterCollect` / `afterBuild` / `configureServer`）。**内核不带任何插件** —— 像 Hexo 一样从 npm 装（`npm i -D xfm-plugin-rss`），装了就自动生效；17 个官方插件在 [`packages/`](./packages) 里独立发布。
 - **内容**：YAML front-matter、草稿、标签/分类/系列聚合、自动 prev/next、按 weight 排序、`.md` 相对链接自动解析。每个标签/分类/系列都会生成独立页面（`/tags/<name>/`、`/categories/<name>/`、`/series/<name>/`），URL 编码的路径会还原成可读的目录名。默认主题还带分类索引页（`/categories/`）与按年归档页（`/archives/`），由 `indexes` 配置项驱动，主题提供对应布局时才会生成。文章页右侧目录会跟随滚动高亮当前小节。列表分页生成真实静态页（`/page/2/`…，`pagination` 配置驱动）。
 - **搜索与阅读**：内置 `search` 插件生成 `search.json` 索引，主题带 Ctrl/⌘+K 搜索面板（纯前端筛选、零依赖）；代码块复制、图片点击放大、阅读进度条、外链新窗口均为主题自带的小交互。
 - **SEO 与 AI 友好**：`seo` 插件按页注入 canonical / Open Graph / Twitter Card / JSON-LD；`llms` 生成 `llms.txt` 与 `llms-full.txt`（按 llmstxt.org 约定）；`feed-json` 提供 JSON Feed 1.1。
@@ -331,6 +331,8 @@ export default {
 | --- | --- | --- |
 | [`xfm-plugin-seo`](./packages/seo) | canonical、Open Graph、Twitter Card、JSON-LD | `seo.image`、`seo.twitter`、`seo.jsonLd` |
 | [`xfm-plugin-related`](./packages/related) | 相关文章 → `page.data.related` | `related.limit`、`related.minScore` |
+| [`xfm-plugin-math`](./packages/math) | 构建期用 KaTeX 渲染公式，前端零 JS | `math.css`、`math.path`、`math.macros`、`math.fonts` |
+| [`xfm-plugin-mermaid`](./packages/mermaid) | mermaid 围栏代码块 → 浏览器里渲染成 SVG 图 | `mermaid.mode`、`mermaid.theme`、`mermaid.securityLevel` |
 | [`xfm-plugin-minify`](./packages/minify) | 更小的 HTML（仅生产构建） | `minify.enabled`、`minify.aggressive` |
 | [`xfm-plugin-image-size`](./packages/image-size) | 读文件头给 `&lt;img&gt;` 补 `width`/`height` | `imageSize.publicDir`、`imageSize.lazy` |
 | [`xfm-plugin-deadlinks`](./packages/deadlinks) | 列出指向空处的站内链接 | `deadlinks.strict`、`deadlinks.ignore` |

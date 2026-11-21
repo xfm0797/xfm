@@ -38,22 +38,26 @@ module.exports = (site) => ({
 | `afterBuild` | 全部写盘前 | 产出额外文件，返回 `{path, contents}` |
 | `configureServer` | dev 启动时 | 挂载自定义路由 |
 
-## 三个内置插件
+## 官方插件
 
-XFM 自带三个即插即用的插件：
+内核不带插件，官方插件各自发布在 npm 上（`xfm-plugin-*`），站点里装哪个就有哪个：
+
+```bash
+npm i -D xfm-plugin-sitemap xfm-plugin-rss xfm-plugin-search
+```
 
 - **sitemap**：生成 `sitemap.xml`，自动排除草稿
-- **rss**：生成 RSS 2.0 订阅源
-- **reading-stats**：统计每个标签的文章数与总字数
+- **rss** / **feed-json**：RSS 2.0 与 JSON Feed
+- **search**：`search.json` + `Ctrl/⌘+K` 面板
+- **seo** / **related**：社交元信息、相关推荐
+- **math** / **mermaid**：KaTeX 公式与流程图（见[另一篇](/posts/math-and-mermaid/)）
+- **minify**、**pwa**、**image-size**、**deadlinks** …
 
-启用方式就是写进配置：
+装了就生效；想固定加载顺序时再写进配置：
 
 ```js
 export default {
-  plugins: [
-    './plugins/sitemap.js',
-    './plugins/rss.js',
-  ],
+  plugins: ['sitemap', 'rss'],
 };
 ```
 
