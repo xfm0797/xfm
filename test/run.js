@@ -744,6 +744,126 @@ async function testBuild() {
     assert(!deps.some((d) => d.startsWith('xfm-plugin-')), '内核不该依赖任何插件包');
   });
 
+  /* ---------- 数学公式 / Mermaid ---------- */
+
+  const helpers = require('../lib/engine/helpers');
+  const mathPlugin = require('../packages/math');
+  const mermaidPlugin = require('../packages/mermaid');
+  const mathSite = (conf = {}, base = '/') =>
+    mathPlugin({ config: { site: { base }, math: conf }, helpers });
+  const mermaidSite = (conf = {}, base = '/') =>
+    mermaidPlugin({ config: { site: { base }, mermaid: conf }, helpers });
+  const pageHtml = (body) => `<html><head></head><body>${body}</body></html>`;
+
+  await test('数学：行内公式渲染成 KaTeX，下划线不再被当成强调', () => {
+    const p = mathSite();
+    const body = renderMarkdown(p.markdown('行内 $a_1 + b_2 = c^2$ 结束'));
+    assert(!body.includes('<em>'), '公式里的下划线被 Markdown 解析成了斜体：' + body);
+    const html = p.transformHtml(pageHtml(body));
+    assert(html.includes('class="katex"'), '没有渲染成 KaTeX：' + html.slice(0, 300));
+    assert(html.includes('href="/assets/katex/katex.min.css"'), '没有注入样式表');
+  });
+
+  await test('数学：块级 $$ 走 display 模式，代码块里的 $ 原样保留', () => {
+    const p = mathSite();
+    const src = p.markdown(['```js', 'const tex = "$x^2$";', '```', '', '$$', '\\frac{1}{3}', '$$'].join('\n'));
+    const body = renderMarkdown(src);
+    const codePart = body.slice(0, body.indexOf('katex-display'));
+    assert(codePart.includes('x^2'), '代码块内容被改坏了：' + codePart);
+    assert(!codePart.includes('katex'), '围栏代码块里的公式被渲染了：' + codePart);
+    const html = p.transformHtml(pageHtml(body));
+    assert(html.includes('katex-display'), '块级公式没有用 display 模式');
+  });
+
+  await test('数学：金额不当公式，\\$ 输出字面美元符号', () => {
+    const p = mathSite();
+    const html = p.transformHtml(pageHtml(renderMarkdown(p.markdown('价格 $5 和 $10，转义 \\$6 结束'))));
+    assert(!html.includes('class="katex"'), '把金额当成了公式');
+    assert(html.includes('$6'), '\\$ 没有输出字面 $：' + html);
+    assert(html.includes('$5 和 $10'), '金额被改写了');
+  });
+
+  await test('数学：CSS 与 woff2 字体进产物，base 前缀正确', () => {
+    const p = mathSite({}, '/blog/');
+    const html = p.transformHtml(pageHtml(renderMarkdown(p.markdown('$x$'))));
+    assert(html.includes('href="/blog/assets/katex/katex.min.css"'), '子路径站点的样式地址没补 base');
+
+    const files = p.afterBuild();
+    const css = files.find((f) => f.path === 'assets/katex/katex.min.css');
+    assert(css && String(css.contents).length > 1000, '没有产出 katex.min.css');
+    assert(!/fonts\/[^)]+\.woff\)/.test(String(css.contents)), 'CSS 仍引用没复制的 woff 字体');
+    const fonts = files.filter((f) => f.path.startsWith('assets/katex/fonts/'));
+    assert(fonts.length >= 10, '字体数量不对：' + fonts.length);
+    assert(fonts.every((f) => f.path.endsWith('.woff2')), '默认只应复制 woff2');
+    assert(p.afterBuild !== undefined && mathSite({ fonts: 'all' }).afterBuild().length > files.length, 'fonts: all 应复制更多文件');
+  });
+
+  await test('数学：css 换成 cdn 时不再往产物里写字体', () => {
+    const p = mathSite({ css: 'cdn', cdn: 'https://cdn.example/katex.min.css' });
+    const html = p.transformHtml(pageHtml(renderMarkdown(p.markdown('$y$'))));
+    assert(html.includes('https://cdn.example/katex.min.css'), '没有用配置的 CDN 地址');
+    assert.deepStrictEqual(p.afterBuild(), [], 'cdn 模式不该产出本地字体');
+  });
+
+  await test('Mermaid：围栏代码块变成 <pre class="mermaid"> 并按需注入脚本', () => {
+    const p = mermaidSite({}, '/blog/');
+    const body = renderMarkdown('```mermaid\ngraph TD\n  A-->B\n```');
+    const html = p.transformHtml(pageHtml(body), { page: { data: {} } });
+    assert(html.includes('<pre class="mermaid">graph TD'), '没有转成 mermaid 容器：' + html);
+    assert(!html.includes('language-mermaid'), '旧的代码块标记还在');
+    assert(html.includes('src="/blog/assets/mermaid/mermaid.min.js"'), '脚本地址没补 base');
+    assert(html.includes('mermaid.run'), '没有触发渲染');
+  });
+
+  await test('Mermaid：没有图表的页面不动，front-matter 可关闭', () => {
+    const p = mermaidSite();
+    const plain = pageHtml('<p>没有图表</p>');
+    assert.strictEqual(p.transformHtml(plain, { page: { data: {} } }), plain);
+
+    const body = renderMarkdown('```mermaid\ngraph LR\n  A-->B\n```');
+    const html = p.transformHtml(pageHtml(body), { page: { data: { mermaid: false } } });
+    assert(!html.includes('mermaid.min.js'), 'mermaid: false 仍然注入了脚本');
+  });
+
+  await test('Mermaid：默认自托管新版脚本，mode: cdn 时不产出文件', () => {
+    const files = mermaidSite().afterBuild();
+    assert.strictEqual(files.length, 1);
+    assert.strictEqual(files[0].path, 'assets/mermaid/mermaid.min.js');
+    assert(files[0].contents.length > 1024 * 1024, 'mermaid 产物太小，可能不是完整包');
+    assert.deepStrictEqual(mermaidSite({ mode: 'cdn' }).afterBuild(), []);
+  });
+
+  await test('数学与 Mermaid 端到端：构建期产物齐全', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-math-mermaid-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.mkdirSync(path.join(dir, 'plugins'), { recursive: true });
+      const pkgs = { math: 'packages/math', mermaid: 'packages/mermaid' };
+      for (const [name, rel] of Object.entries(pkgs)) {
+        fs.writeFileSync(
+          path.join(dir, 'plugins', `${name}.js`),
+          `module.exports = require(${JSON.stringify(path.join(__dirname, '..', rel))});\n`
+        );
+      }
+      fs.writeFileSync(
+        path.join(dir, 'content', 'posts', 'math-demo.md'),
+        '---\ntitle: 公式与图表\ndate: 2026-02-01\n---\n\n质能方程 $E = mc^2$。\n\n$$\n\\int_0^1 x^2 \\, dx = \\frac{1}{3}\n$$\n\n```mermaid\ngraph TD\n  A-->B\n```\n'
+      );
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      const html = fs.readFileSync(path.join(dir, 'dist', 'posts', 'math-demo', 'index.html'), 'utf8');
+      assert(html.includes('class="katex"'), '页面里没有 KaTeX 产物');
+      assert(html.includes('<pre class="mermaid">'), '页面里没有 mermaid 容器');
+      assert(fs.existsSync(path.join(dir, 'dist', 'assets', 'katex', 'katex.min.css')), '缺少 katex.min.css');
+      assert(fs.readdirSync(path.join(dir, 'dist', 'assets', 'katex', 'fonts')).length >= 10, '缺少 KaTeX 字体');
+      assert(fs.existsSync(path.join(dir, 'dist', 'assets', 'mermaid', 'mermaid.min.js')), '缺少 mermaid.min.js');
+      // 没有公式的页面不该被塞样式
+      const about = fs.readFileSync(path.join(dir, 'dist', 'about', 'index.html'), 'utf8');
+      assert(!about.includes('katex.min.css'), '无公式页面也注入了样式');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   await test('HTML 语义结构', () => {
     const html = fs.readFileSync(path.join(tmp, 'dist', 'posts', 'hello-world', 'index.html'), 'utf8');
     assert(html.includes('<h1'), '缺少 h1');

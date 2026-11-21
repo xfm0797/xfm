@@ -1,0 +1,46 @@
+{
+  "name": "xfm-plugin-math",
+  "version": "0.4.15",
+  "description": "KaTeX math rendering for xfmpress — build-time, no client-side JS",
+  "type": "commonjs",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "xfm",
+    "xfmpress",
+    "xfmpress-plugin",
+    "static-site-generator",
+    "plugin",
+    "katex",
+    "latex",
+    "math"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xfm0797/xfm.git",
+    "directory": "packages/math"
+  },
+  "bugs": {
+    "url": "https://github.com/xfm0797/xfm/issues"
+  },
+  "homepage": "https://github.com/xfm0797/xfm/tree/main/packages/math#readme",
+  "author": "xfm0797",
+  "license": "MIT",
+  "dependencies": {
+    "katex": "^0.19.1"
+  },
+  "peerDependencies": {
+    "xfmpress": ">=0.4.2"
+  },
+  "peerDependenciesMeta": {
+    "xfmpress": {
+      "optional": true
+    }
+  }
+}
