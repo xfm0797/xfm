@@ -2501,6 +2501,84 @@ async function testExtras() {
       }
     });
 
+    await test('share：默认配置给文章页插分享栏，URL 带站点地址', () => {
+      const helpers = require('../lib/engine/helpers');
+      const make = (conf, mode = 'production') =>
+        require('xfm-plugin-share')({
+          config: { site: { base: '/blog/', url: 'https://ex.com' }, share: conf },
+          mode,
+          helpers,
+        });
+      const post = { url: '/posts/x/', date: '2026-01-01', title: '一篇好文章', data: {} };
+      const render = (conf, mode) =>
+        make(conf, mode).transformHtml('<html><head></head><body><article>正文</article></body></html>', { page: post });
+
+      const html = render({});
+      // 默认六个网络，顺序按配置
+      assert(html.includes('data-share-networks="weibo,wechat,qq,twitter,telegram,copy"'), '默认网络不对');
+      // 分享地址带 site.url + base，标题进参数
+      assert(html.includes('url=https%3A%2F%2Fex.com%2Fblog%2Fposts%2Fx%2F'), '微博链接没带完整地址');
+      assert(html.includes('title=%E4%B8%80%E7%AF%87%E5%A5%BD%E6%96%87%E7%AB%A0'), '标题没编码');
+      // 复制按钮携带完整地址与提示文案
+      assert(html.includes('data-share-url="https://ex.com/blog/posts/x/"'), '复制按钮没带完整地址');
+      assert(html.includes('data-share-msg="链接已复制"'), '复制提示缺失');
+      // 样式进 head，脚本随复制按钮出现，区块贴在文章内
+      assert(html.includes('.xfm-share{'), '样式没注入 head');
+      assert(html.includes('navigator.clipboard'), '复制脚本没注入');
+      assert(html.indexOf('xfm-share') < html.indexOf('</article>'), '没插在文章内');
+      assert(html.includes('>分享</span>'), '缺区块标题');
+
+      // 页面过滤
+      const home = make({}).transformHtml('<main>x</main>', { page: { url: '/', date: '', data: {} } });
+      assert(!home.includes('xfm-share'), '首页不该有分享栏');
+      const standalone = make({}).transformHtml('<article>x</article>', { page: { ...post, data: { type: 'page' } } });
+      assert(!standalone.includes('xfm-share'), '独立页面不该有分享栏');
+      const off = make({}).transformHtml('<article>x</article>', { page: { ...post, data: { share: false } } });
+      assert(!off.includes('xfm-share'), 'front-matter share:false 未生效');
+      const dev = make({}, 'development');
+      assert(!dev.transformHtml('<article>x</article>', { page: post }).includes('xfm-share'), 'dev 下不该插入');
+      assert(make({ dev: true }, 'development').transformHtml('<article>x</article>', { page: post }).includes('xfm-share'), 'dev: true 应插入');
+      // 挂载点只补脚本，不重复建容器
+      const mounted = make({}).transformHtml('<article>x</article><div data-xfm-share></div>', { page: post });
+      assert.strictEqual(mounted.split('data-xfm-share').length - 1, 1, '挂载点被重复创建了');
+    });
+
+    await test('share：networks 自定义、别名与未知网络', () => {
+      const helpers = require('../lib/engine/helpers');
+      const warn = console.warn;
+      console.warn = () => {};
+      try {
+        const make = (conf) =>
+          require('xfm-plugin-share')({
+            config: { site: { base: '/', url: 'https://ex.com' }, share: conf },
+            mode: 'production',
+            helpers,
+          });
+        const post = { url: '/p/', date: '2026-01-01', title: 't', data: {} };
+        const render = (conf) => make(conf).transformHtml('<article>x</article>', { page: post });
+
+        // 别名与过滤
+        const html = render({ networks: ['X', 'mail', 'nope'] });
+        assert(html.includes('twitter.com/intent/tweet'), '别名 x 没映射到 twitter');
+        assert(html.includes('mailto:?subject='), '别名 mail 没映射到 email');
+        assert(!html.includes('nope'), '未知网络没被跳过');
+
+        // 只配复制按钮时不该出现外链
+        const onlyCopy = render({ networks: ['copy'] });
+        assert(!/href="https?:\/\//.test(onlyCopy), '只配 copy 不该有外链');
+        assert(onlyCopy.includes('data-share-url="https://ex.com/p/"'), 'copy 没带完整地址');
+
+        // 微信也是复制类
+        const withWechat = render({ networks: ['wechat'] });
+        assert(withWechat.includes('data-share-msg="链接已复制，可在微信中粘贴分享"'), '微信提示文案不对');
+
+        // 全部未知 → 整块跳过
+        assert(!render({ networks: ['nope'] }).includes('xfm-share'), '全未知网络仍渲染了分享栏');
+      } finally {
+        console.warn = warn;
+      }
+    });
+
     await test('redirect 在旧地址生成跳转页', () => {
       const helpers = require('../lib/engine/helpers');
       const site = {
