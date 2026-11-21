@@ -1017,6 +1017,77 @@ async function testBuild() {
     }
   });
 
+  await test('定时发布：未来日期的文章生产构建不输出，--scheduled 纳入，dev 可见', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-sched-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      const future = new Date(Date.now() + 10 * 86400000);
+      const fStr = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'future.md'),
+        `---\ntitle: 未来文章\ndate: ${fStr}\ntags: [x]\n---\n未到发布时间\n`);
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'past.md'),
+        '---\ntitle: 旧文章\ndate: 2020-01-01\ntags: [x]\n---\n已发布\n');
+      const futureOut = path.join(dir, 'dist', 'posts', 'future', 'index.html');
+      const pastOut = path.join(dir, 'dist', 'posts', 'past', 'index.html');
+
+      let r = spawnSync(process.execPath, [bin, 'build', dir], { encoding: 'utf8' });
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert(!fs.existsSync(futureOut), '默认发布了未来文章');
+      assert(fs.existsSync(pastOut), '过去文章未发布');
+      assert(/调度中\s+1 篇/.test(r.stdout), '未报告调度篇数：' + r.stdout);
+
+      r = spawnSync(process.execPath, [bin, 'build', dir, '--scheduled'], { encoding: 'utf8' });
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert(fs.existsSync(futureOut), '--scheduled 未发布未来文章');
+      assert(!/调度中/.test(r.stdout), '--scheduled 仍报告调度中');
+
+      // buildScheduled 配置为 true，但 --no-scheduled 覆盖并清理旧产物
+      const cfg = path.join(dir, 'xfm.config.mjs');
+      fs.writeFileSync(cfg, fs.readFileSync(cfg, 'utf8')
+        .replace('export default {', 'export default {\n  buildScheduled: true,'));
+      r = spawnSync(process.execPath, [bin, 'build', dir, '--no-scheduled'], { encoding: 'utf8' });
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert(!fs.existsSync(futureOut), '--no-scheduled 未覆盖 buildScheduled 配置');
+
+      // dev 模式预览未来文章
+      const { DevServer } = require('../lib/engine/server');
+      const dev = new DevServer(dir, { port: 0 });
+      await dev.start();
+      try {
+        const res = await fetch(dev.url + 'posts/future/');
+        assert.strictEqual(res.status, 200, 'dev 未服务未来文章：' + res.status);
+      } finally {
+        await dev.close();
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('定时发布：未来文章不进 RSS / sitemap / 聚合计数', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-sched-feed-'));
+    try {
+      scaffoldSite(dir, ['--template=blog']); // 默认带 sitemap + rss
+      const future = new Date(Date.now() + 10 * 86400000);
+      const fStr = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'future.md'),
+        `---\ntitle: 未来文章\ndate: ${fStr}\ntags: [x]\n---\n正文\n`);
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'live.md'),
+        '---\ntitle: 在线文章\ndate: 2020-01-01\ntags: [x]\n---\n正文\n');
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      const rss = fs.readFileSync(path.join(dir, 'dist', 'feed.xml'), 'utf8');
+      assert(!rss.includes('/posts/future/'), 'RSS 收录了未来文章');
+      assert(rss.includes('/posts/live/'), 'RSS 漏了在线文章');
+      const sm = fs.readFileSync(path.join(dir, 'dist', 'sitemap.xml'), 'utf8');
+      assert(!sm.includes('/posts/future/'), 'sitemap 收录了未来文章');
+      const tagPage = fs.readFileSync(path.join(dir, 'dist', 'tags', 'x', 'index.html'), 'utf8');
+      assert(!tagPage.includes('未来文章'), '聚合页列出了未来文章');
+      assert(tagPage.includes('共 1 篇'), '聚合计数未排除未来文章');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   await test('生产增量构建不会复用开发模式的页面缓存', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-cache-mode-'));
     try {
@@ -1331,6 +1402,69 @@ async function testBuild() {
       assert(!read('feed.xml').includes('/archives/'), 'RSS 不应包含归档页');
     } finally {
       fs.rmSync(taxTmp, { recursive: true, force: true });
+    }
+  });
+
+  await test('聚合页分页：标签下文章超过 perPage 时生成 /tags/x/page/N/', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-taxopage-'));
+    try {
+      scaffoldSite(dir, ['--template=blog']); // 默认带 sitemap + rss
+      for (let i = 1; i <= 11; i++) {
+        fs.writeFileSync(path.join(dir, 'content', 'posts', `p${i}.md`),
+          `---\ntitle: 文章${i}\ndate: 2020-01-${String(i).padStart(2, '0')}\ntags: [foo]\n---\n正文${i}\n`);
+      }
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+
+      const p1 = path.join(dir, 'dist', 'tags', 'foo', 'index.html');
+      const p2 = path.join(dir, 'dist', 'tags', 'foo', 'page', '2', 'index.html');
+      assert(fs.existsSync(p1), '标签首页未生成');
+      assert(fs.existsSync(p2), '未生成分页第 2 页');
+      assert(!fs.existsSync(path.join(dir, 'dist', 'tags', 'foo', 'page', '3')), '多生成了第 3 页');
+
+      const h1 = fs.readFileSync(p1, 'utf8');
+      const h2 = fs.readFileSync(p2, 'utf8');
+      assert.strictEqual((h1.match(/card-title/g) || []).length, 9, '第 1 页卡片数应等于 perPage=9');
+      assert.strictEqual((h2.match(/card-title/g) || []).length, 2, '第 2 页应只有 2 篇');
+      assert(h1.includes('href="/tags/foo/page/2/"'), '第 1 页缺下一页链接');
+      assert(h2.includes('href="/tags/foo/"'), '第 2 页缺上一页链接');
+      assert(/第 2 页/.test(h2), '分页页标题未标注页码');
+      assert(h2.includes('is-current'), '分页组件未标出当前页');
+
+      const rss = fs.readFileSync(path.join(dir, 'dist', 'feed.xml'), 'utf8');
+      assert(!rss.includes('/tags/foo/page/'), '分页页混进了 RSS');
+      const sm = fs.readFileSync(path.join(dir, 'dist', 'sitemap.xml'), 'utf8');
+      assert(sm.includes('/tags/foo/page/2/'), '分页页未进 sitemap');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('聚合页分页：perPage 配置生效，pagination.taxonomy=false 关闭聚合分页', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-taxocfg-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      for (let i = 1; i <= 5; i++) {
+        fs.writeFileSync(path.join(dir, 'content', 'posts', `p${i}.md`),
+          `---\ntitle: 文章${i}\ndate: 2020-02-0${i}\ntags: [bar]\n---\n正文\n`);
+      }
+      const cfg = path.join(dir, 'xfm.config.mjs');
+      // 替换脚手架已有的 pagination 行，避免重复键被原值覆盖
+      fs.writeFileSync(cfg, fs.readFileSync(cfg, 'utf8')
+        .replace('pagination: { perPage: 9 },', 'pagination: { perPage: 2 },'));
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      assert(fs.existsSync(path.join(dir, 'dist', 'tags', 'bar', 'page', '3', 'index.html')), 'perPage=2 应生成第 3 页');
+      const h1 = fs.readFileSync(path.join(dir, 'dist', 'tags', 'bar', 'index.html'), 'utf8');
+      assert.strictEqual((h1.match(/card-title/g) || []).length, 2, 'perPage 未生效');
+
+      // 关闭聚合分页：单页列出全部，且旧分页页被清理
+      fs.writeFileSync(cfg, fs.readFileSync(cfg, 'utf8')
+        .replace('pagination: { perPage: 2 },', 'pagination: { perPage: 2, taxonomy: false },'));
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      assert(!fs.existsSync(path.join(dir, 'dist', 'tags', 'bar', 'page')), 'taxonomy:false 仍生成分页页');
+      const all = fs.readFileSync(path.join(dir, 'dist', 'tags', 'bar', 'index.html'), 'utf8');
+      assert.strictEqual((all.match(/card-title/g) || []).length, 5, 'taxonomy:false 应单页列全部');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 

@@ -93,6 +93,8 @@ async function cmdBuild(args) {
   // 草稿只由配置或显式 CLI 选项控制，不再随缓存开关意外发布。
   if (args.drafts !== undefined) config.buildDrafts = truthy(args.drafts);
   if (truthy(args['no-drafts'])) config.buildDrafts = false;
+  if (args.scheduled !== undefined) config.buildScheduled = truthy(args.scheduled);
+  if (truthy(args['no-scheduled'])) config.buildScheduled = false;
   const site = new Site(config, root, {
     mode: 'production',
     incremental: truthy(args.incremental) || truthy(args.dev),
@@ -104,6 +106,7 @@ async function cmdBuild(args) {
   const ms = performance.now() - t0;
   const size = await dirSize(outDir);
   console.log(`  ${paint(C.green, '✓')} 页面      ${paint(C.bold, String(site.pages.length))} 个`);
+  if (site.scheduledCount) console.log(`  ${paint(C.dim, '调度中')}  ${site.scheduledCount} 篇（未来日期，未发布；--scheduled 可纳入）`);
   // 插件是外部包，装没装、生效没生效要看得见
   const loaded = site.plugins.names();
   console.log(`  ${paint(C.green, '✓')} 插件      ${loaded.length ? loaded.join(', ') : paint(C.dim, '无（npm i -D xfm-plugin-xxx 按需安装）')}`);
@@ -437,6 +440,8 @@ ${paint(C.bold, '选项')}
   --dev                等价于 --incremental（兼容旧用法）
   --drafts             build 时包含草稿
   --no-drafts          build 时排除草稿（覆盖 buildDrafts 配置）
+  --scheduled          build 时包含未来日期的文章（定时发布）
+  --no-scheduled       build 时排除未来日期的文章（覆盖 buildScheduled 配置）
   --template=docs      create 时使用文档模板
   --layout=page        new 的布局，等价于写在标题前的 post / page / draft
   --dir=posts          new 的落地目录（page 默认在 content 根目录）

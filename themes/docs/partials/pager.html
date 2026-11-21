@@ -1,0 +1,23 @@
+{% if pagination and pagination.totalPages > 1 %}
+<nav class="pager" aria-label="分页">
+  {% if pagination.prev %}
+  <a class="pager-step" href="{{ pagination.prev }}" rel="prev">← 上一页</a>
+  {% else %}
+  <span class="pager-step is-disabled">← 上一页</span>
+  {% endif %}
+
+  <span class="pager-nums">
+    {% for p in pagination.links %}
+      {% if p.gap %}<span class="pager-gap">…</span>
+      {% elif p.current %}<span class="pager-num is-current" aria-current="page">{{ p.n }}</span>
+      {% else %}<a class="pager-num" href="{{ p.url }}">{{ p.n }}</a>{% endif %}
+    {% endfor %}
+  </span>
+
+  {% if pagination.next %}
+  <a class="pager-step" href="{{ pagination.next }}" rel="next">下一页 →</a>
+  {% else %}
+  <span class="pager-step is-disabled">下一页 →</span>
+  {% endif %}
+</nav>
+{% endif %}

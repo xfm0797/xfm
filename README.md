@@ -110,7 +110,7 @@ npm i -g xfmpress      # then use the xfm command (Node >= 18)
 | --- | --- |
 | `xfm create [dir]` | Scaffold a site (`--template=blog\|docs`, `--title=`). Alias: `xfm init` |
 | `xfm dev [dir]` | Dev server (`--port=`). Aliases: `serve`, `server`, `preview` |
-| `xfm build [dir]` | Production build. `--incremental` enables cache; `--drafts` / `--no-drafts` override draft config. `--dev` remains a compatibility alias for `--incremental`. Aliases: `generate`, `gen` |
+| `xfm build [dir]` | Production build. `--incremental` enables cache; `--drafts` / `--no-drafts` override draft config. `--scheduled` / `--no-scheduled` include or exclude posts whose `date` is in the future. `--dev` remains a compatibility alias for `--incremental`. Aliases: `generate`, `gen` |
 | `xfm new [layout] "Title"` | New content — `post` (default) / `page` / `draft`; `--dir= --slug= --layout= --draft --force`, duplicate titles auto-number |
 | `xfm clean` / `xfm info` | Clean output / show config |
 
@@ -138,7 +138,7 @@ export default {
   minify: { aggressive: false },        // used by xfm-plugin-minify; folds inter-tag newlines
   search: { path: 'search.json' },      // used by xfm-plugin-search
   defaults: { layout: 'post.html' },
-  pagination: { perPage: 9 },        // listing pages at /page/2/, /page/3/, ...
+  pagination: { perPage: 9 },        // home + tag/category/series pages paginate at /page/2/...; add taxonomy:false to paginate the home only
   indexes: {                         // category index / archive pages
     categories: { enabled: true, url: '/categories/' },
     archives: { enabled: true, url: '/archives/' },
@@ -174,6 +174,11 @@ xfm new page intro --dir=docs # content/docs/intro.md          → /docs/intro/
 adds `draft: true`, so production builds skip it until you delete the line. A single argument is
 always a title — `xfm new page` creates a *post* called “page”, and `xfm new 我的 文章` keeps the
 whole string.
+
+**Scheduled publishing** — give a post a `date` (or `published`) in the future and production
+builds hold it back (out of pages, RSS, sitemap and post-list counts) until that date arrives; it
+stays visible in `dev` so you can preview. Build with `--scheduled` or set `buildScheduled: true`
+in `xfm.config.mjs` to publish it regardless. A build reports `调度中  N 篇` when posts are held.
 
 The starting content comes from `scaffolds/<layout>.md` in the site, so you can adjust it once and
 every `xfm new` follows: placeholders are `{{ title }}`, `{{ date }}` and `{{ layout }}`. Missing

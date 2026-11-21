@@ -109,7 +109,7 @@ npm i -g xfmpress      # 全局安装，然后直接使用 xfm 命令（Node ≥
 | --- | --- |
 | `xfm create [目录]` | 创建站点（`--template=blog\|docs`，`--title=`），别名 `xfm init` |
 | `xfm dev [目录]` | 开发服务器（`--port=`），别名 `serve` / `server` / `preview` |
-| `xfm build [目录]` | 生产构建；`--incremental` 启用缓存，`--drafts` / `--no-drafts` 覆盖草稿配置；`--dev` 是 `--incremental` 的兼容别名。别名 `generate` / `gen` |
+| `xfm build [目录]` | 生产构建；`--incremental` 启用缓存，`--drafts` / `--no-drafts` 覆盖草稿配置；`--scheduled` / `--no-scheduled` 纳入或排除 `date` 在未来的文章；`--dev` 是 `--incremental` 的兼容别名。别名 `generate` / `gen` |
 | `xfm new [布局] "标题"` | 新建内容：`post` 文章（默认）/ `page` 页面 / `draft` 草稿；`--dir= --slug= --layout= --draft --force`，同名自动追加编号 |
 | `xfm clean` / `xfm info` | 清理产物 / 查看配置 |
 
@@ -137,7 +137,7 @@ export default {
   minify: { aggressive: false },        // xfm-plugin-minify 用：aggressive 会折叠标签间换行
   search: { path: 'search.json' },      // xfm-plugin-search 用
   defaults: { layout: 'post.html' },
-  pagination: { perPage: 9 },        // 列表分页：/page/2/、/page/3/…
+  pagination: { perPage: 9 },        // 首页 + 标签/分类/系列页都分页：/page/2/…；加 taxonomy:false 则只给首页分页
   indexes: {                         // 分类索引页 / 归档页
     categories: { enabled: true, url: '/categories/' },
     archives: { enabled: true, url: '/archives/' },
@@ -183,6 +183,8 @@ xfm new page intro --dir=docs # content/docs/intro.md          → /docs/intro/
 ```
 
 `page` 会写 `layout: page.html` 与 `type: page`：页面有自己的 URL、可以挂进 `site.nav`，但不会混进文章列表、RSS、相关推荐和搜索索引。`draft` 会写 `draft: true`，生产构建直接跳过，删掉那行就发布。只给一个参数时它一定是标题——`xfm new page` 建的是**文章**，标题叫 “page”；`xfm new 我的 文章` 也不会被截断。
+
+**定时发布** —— 把文章的 `date`（或 `published`）设为未来时间，生产构建会暂缓发布（不进页面、RSS、sitemap 与文章列表计数），到点自动发布；`dev` 模式下依然可见，方便预览。加 `--scheduled` 或在 `xfm.config.mjs` 里设 `buildScheduled: true` 可强制发布。有文章被暂缓时，构建会输出 `调度中  N 篇`。
 
 初始内容取自站点的 `scaffolds/<布局>.md`，改一次之后所有 `xfm new` 都按它来，占位符是 `{{ title }}`、`{{ date }}`、`{{ layout }}`。漏写的 front-matter 字段（标题、布局、`type: page`、`draft`）会自动补齐，所以哪怕脚手架里完全不写 front-matter，生成出来的页面也是能正常构建的。
 
