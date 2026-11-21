@@ -8,7 +8,7 @@
   {% for post in page.data.posts %}<article class="card">
     <div class="card-top"><time class="card-date">{{ post.date }}</time></div>
     <a class="card-title" href="{{ post.url }}">{{ post.title }}</a>
-    {% if post.description %}<p class="card-desc">{{ post.description }}</p>{% endif %}
+    {% if post.desc %}<p class="card-desc">{{ post.desc }}</p>{% endif %}
   </article>
   {% else %}<p class="empty">暂无内容</p>
   {% endfor %}

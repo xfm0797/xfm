@@ -7,7 +7,7 @@
 <section class="timeline">
   {% for post in page.data.posts %}<article class="card">
     <a class="card-title" href="{{ post.url }}">{{ post.title }}</a>
-    <p class="card-desc">{{ post.description }}</p>
+    <p class="card-desc">{{ post.desc }}</p>
     <div class="card-meta">{{ post.date }}</div>
   </article>
   {% else %}<p class="empty">暂无内容</p>

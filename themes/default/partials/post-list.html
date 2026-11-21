@@ -5,7 +5,7 @@
     {% if post.readTime %}<span class="card-read">{{ post.readTime }} 分钟</span>{% endif %}
   </div>
   <a class="card-title" href="{{ post.url }}">{{ post.title }}</a>
-  {% if post.description %}<p class="card-desc">{{ post.description }}</p>{% endif %}
+  {% if post.desc %}<p class="card-desc">{{ post.desc }}</p>{% endif %}
   <div class="card-foot">
     {% for t in post.tags %}<a class="tag" href="/tags/{{ t }}/">{{ t }}</a>{% endfor %}
   </div>

@@ -61,6 +61,13 @@ module.exports = (site) => {
       if (data.seo === false) return html;
       if (!/<\/head>/i.test(html)) return html;
 
+      // 多语言：仅当站点声明了多个语言时才注入 hreflang / og:locale:alternate，
+      // 单语站完全不输出，保证现有产物零变化。
+      const pageLang = page.lang || lang;
+      const pageTranslations = Array.isArray(page.translations) ? page.translations : [];
+      const langs = siteConf.languages;
+      const isMultilingual = Array.isArray(langs) && langs.length > 1;
+
       const isPost = !!page.date && page.url !== '/' && data.type !== 'page';
       const canonical = data.canonical
         ? String(data.canonical)
@@ -85,6 +92,17 @@ module.exports = (site) => {
         out.push(`<link rel="canonical" href="${esc(canonical)}">`);
       }
 
+      // hreflang alternate：多语站 + 页面有翻译版本时注入；模板已手写 hreflang 则不动
+      if (isMultilingual && pageTranslations.length && !/hreflang=/i.test(html)) {
+        for (const t of pageTranslations) {
+          out.push(`<link rel="alternate" hreflang="${esc(t.lang)}" href="${esc(absoluteUrl(siteConf, t.url))}">`);
+        }
+        const xDefault = pageTranslations.find((t) => t.lang === langs[0]) || pageTranslations[0];
+        if (xDefault) {
+          out.push(`<link rel="alternate" hreflang="x-default" href="${esc(absoluteUrl(siteConf, xDefault.url))}">`);
+        }
+      }
+
       if (data.noindex === true) {
         out.push('<meta name="robots" content="noindex, follow">');
       }
@@ -97,7 +115,7 @@ module.exports = (site) => {
           desc && `<meta property="og:description" content="${esc(desc)}">`,
           `<meta property="og:url" content="${esc(canonical)}">`,
           siteName && `<meta property="og:site_name" content="${esc(siteName)}">`,
-          `<meta property="og:locale" content="${esc(ogLocale(lang))}">`,
+          `<meta property="og:locale" content="${esc(ogLocale(pageLang))}">`,
           image && `<meta property="og:image" content="${esc(image)}">`,
         ];
         if (isPost) {
@@ -108,6 +126,13 @@ module.exports = (site) => {
           for (const t of page.tags || []) og.push(`<meta property="article:tag" content="${esc(t)}">`);
         }
         out.push(...og.filter(Boolean));
+
+        // og:locale:alternate：多语站列出其他语言版本（单语站不输出）
+        if (isMultilingual) {
+          for (const t of pageTranslations) {
+            if (t.lang !== pageLang) out.push(`<meta property="og:locale:alternate" content="${esc(ogLocale(t.lang))}">`);
+          }
+        }
 
         // Twitter Card 跟着 OG 走，避免出现只有一半的情况
         out.push(`<meta name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}">`);

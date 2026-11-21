@@ -128,6 +128,7 @@ export default {
     base: '/',                       // 子路径部署示例：'/blog/'，所有站内链接自动加前缀
     url: 'https://example.com',      // 供 sitemap/RSS 使用
     nav: [{ title: '文章', url: '/' }],
+    // languages: ['zh-CN', 'en'],   // 开启多语言：注入 hreflang + 语言切换；单语不产生任何额外输出
   },
   theme: 'default',                  // 主题名或路径
   plugins: ['sitemap', 'rss'],       // 可选 —— 装好的 xfm-plugin-* 依赖本来就会自动加载
@@ -138,6 +139,8 @@ export default {
   search: { path: 'search.json' },      // xfm-plugin-search 用
   defaults: { layout: 'post.html' },
   pagination: { perPage: 9 },        // 首页 + 标签/分类/系列页都分页：/page/2/…；加 taxonomy:false 则只给首页分页
+  dataDir: 'data',                   // data/ 下的 *.json / *.yaml / *.js → site.data；嵌套目录 → 嵌套对象
+  // collections: { projects: { dir: 'projects', perPage: 9 } },  // 自定义集合 → 生成 /projects/ 列表 + 详情 + 分页
   indexes: {                         // 分类索引页 / 归档页
     categories: { enabled: true, url: '/categories/' },
     archives: { enabled: true, url: '/archives/' },
@@ -217,6 +220,61 @@ content/posts/hello/
 - `xfm-plugin-image-size` 与 `xfm-plugin-deadlinks` 已兼容：能从 `./cover.png` 读尺寸，相对链接不会被误报死链。
 
 以 `.` 开头的隐藏文件会被忽略。
+
+## 数据文件、集合与多语言
+
+### 全局数据文件（`data/`）
+
+在 `data/` 目录（可通过 `dataDir` 配置）下放 `.json`、`.yaml`/`.yml`、`.js`/`.mjs` 文件，模板与插件里都能通过 `site.data` 读取。嵌套目录会变成嵌套对象——`data/team/members.yml` 即 `site.data.team.members`；以 `.` 开头的隐藏文件会被忽略。`.js`/`.mjs` 取默认导出：
+
+```js
+// data/meta.js
+export default { version: 3, live: true };   // CJS 写 module.exports = {...} 也可以
+```
+```html
+<p>v{{ site.data.meta.version }}</p>
+```
+
+改动任意数据文件会使所有页面的缓存失效，因为任何模板都可能引用 `site.data`。值在交给模板前会经过 JSON 克隆，函数与循环引用会被丢弃（保证 worker 载荷可结构化克隆）。
+
+### 自动摘要（`page.desc`）
+
+页面没有 `description` 时，xfm 会把渲染后的正文截断到约 140 字作为 `excerpt`。模板拿到的 `page.desc` = `description || excerpt`——列表卡片和 meta 标签直接用它即可，不必到处写 `||` 兜底。default 与 docs 主题已在文章列表渲染 `post.desc`，并在 `<meta name="description">` 里兜底。
+
+### 自定义集合
+
+把 `content/` 某个子目录下的文件归为一个独立栏目，有自己的列表页、分页与布局：
+
+```js
+collections: {
+  projects: {
+    dir: 'projects',            // content/ 下的子目录（默认等于集合名）
+    url: '/projects/',          // 列表页 URL（默认 /<name>/）
+    layout: 'collection.html',  // 列表布局；两个主题都自带 collection.html
+    perPage: 9,                 // 0 = 不分页；默认继承站点 pagination.perPage
+    title: '作品集',
+    description: '我做的东西',
+    posts: false,               // true = 条目同时进入默认文章流 site.posts
+  },
+}
+```
+
+`content/projects/*.md` 是正常的详情页（有自己的 URL，布局取 front-matter/defaults），xfm 另外生成 `/projects/` 以及 `/projects/page/2/…`，按日期倒序列出。集合条目默认不进文章流、RSS、上下篇和首页，除非设 `posts: true`。模板在列表页遍历 `page.data.posts`，或在任意页面读 `site.collections.projects`（含 `.count`、`.items`、`.url`）。
+
+### 多语言（i18n）
+
+在 `site.languages` 里声明要启用的语言：
+
+```js
+site: { lang: 'zh-CN', languages: ['zh-CN', 'en'] }
+```
+
+- 页面语言取 front-matter 的 `lang`，缺省回退 `site.lang`；`<html lang>` 跟随当前页。
+- front-matter 里 `translationKey` 相同的页面互为翻译，会拿到 `page.translations`——`[{ lang, url, title }]`。
+- 装了 `xfm-plugin-seo` 时，每个页面会为每个翻译版本注入 `<link rel="alternate" hreflang="…">` 及 `x-default`，并补上 `og:locale:alternate`。**单语站完全不输出这些**，现有产物保持不变。
+- default 与 docs 主题在导航里包含了 `lang-switcher.html` 片段（页面没有翻译时自动隐藏）。
+- 导航本地化：给某个 nav 条目加 `translations` 映射——`{ title: '关于', url: '/about/', translations: { en: { title: 'About', url: '/about-en/' } } }`——引擎会按当前页语言选用对应条目。
+- 所有模板都能访问 `site.languages` 与 `site.defaultLang`。
 
 ## 钩子语义
 

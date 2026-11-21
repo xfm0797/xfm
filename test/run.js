@@ -1533,6 +1533,252 @@ async function testBuild() {
     }
   });
 
+  await test('全局数据文件：json/yaml/js 加载，嵌套目录映射为嵌套对象', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-data-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.mkdirSync(path.join(dir, 'data', 'team'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'data', 'authors.json'), JSON.stringify([{ name: 'Alice' }, { name: 'Bob' }]));
+      fs.writeFileSync(path.join(dir, 'data', 'team', 'members.yml'), 'lead: Carol\nmembers:\n  - Dan\n  - Eve\n');
+      fs.writeFileSync(path.join(dir, 'data', 'meta.js'), 'module.exports = { version: 3, live: true };\n');
+      const cfgFile = path.join(dir, 'xfm.config.mjs');
+      fs.writeFileSync(cfgFile, fs.readFileSync(cfgFile, 'utf8').replace(
+        "pagination: { perPage: 9 },",
+        "pagination: { perPage: 9 },\n  plugins: [\n    { name: 'probe', afterBuild(s) { return [{ path: 'data.json', contents: JSON.stringify(s.siteContext.data) }]; }, transformHtml(html, ctx) { return html + '\\n<!--V:' + (ctx.site.data && ctx.site.data.meta && ctx.site.data.meta.version) + '-->'; } }\n  ],"
+      ));
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      const emitted = JSON.parse(fs.readFileSync(path.join(dir, 'dist', 'data.json'), 'utf8'));
+      assert(Array.isArray(emitted.authors) && emitted.authors[0].name === 'Alice', 'authors.json 未加载：' + JSON.stringify(emitted));
+      assert(emitted.team && emitted.team.members.lead === 'Carol' && emitted.team.members.members[0] === 'Dan', '嵌套 yml 未加载：' + JSON.stringify(emitted && emitted.team));
+      assert(emitted.meta && emitted.meta.version === 3 && emitted.meta.live === true, 'meta.js 未加载：' + JSON.stringify(emitted && emitted.meta));
+      const idx = fs.readFileSync(path.join(dir, 'dist', 'index.html'), 'utf8');
+      assert(idx.includes('<!--V:3-->'), '插件/模板读不到 site.data');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('数据文件变更击穿增量构建缓存', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-data-inc-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.mkdirSync(path.join(dir, 'data'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'data', 'meta.js'), 'module.exports = { version: 3 };\n');
+      const cfgFile = path.join(dir, 'xfm.config.mjs');
+      fs.writeFileSync(cfgFile, fs.readFileSync(cfgFile, 'utf8').replace(
+        "pagination: { perPage: 9 },",
+        "pagination: { perPage: 9 },\n  plugins: [\n    { name: 'probe', transformHtml(html, ctx) { return html + '\\n<!--V:' + (ctx.site.data && ctx.site.data.meta && ctx.site.data.meta.version) + '-->'; } }\n  ],"
+      ));
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      assert(fs.readFileSync(path.join(dir, 'dist', 'index.html'), 'utf8').includes('<!--V:3-->'), '首次构建未注入');
+      fs.writeFileSync(path.join(dir, 'data', 'meta.js'), 'module.exports = { version: 9 };\n');
+      const r = spawnSync(process.execPath, [bin, 'build', dir, '--incremental'], { encoding: 'utf8' });
+      assert.strictEqual(r.status, 0, '增量构建失败：' + r.stderr);
+      const idx2 = fs.readFileSync(path.join(dir, 'dist', 'index.html'), 'utf8');
+      assert(idx2.includes('<!--V:9-->') && !idx2.includes('<!--V:3-->'), '数据变更未击穿缓存：' + idx2.slice(-200));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('自动摘要：无 description 时列表卡片显示正文截断', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-excerpt-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'nodesc.md'),
+        '---\ntitle: 没有描述的文章\ndate: 2020-01-01\ntags: [x]\n---\n这是一段很长的正文内容，用来测试自动摘要功能是否会在没有 description 的时候正确截断显示在列表卡片当中。\n');
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      const idx = fs.readFileSync(path.join(dir, 'dist', 'index.html'), 'utf8');
+      assert(idx.includes('card-desc'), '列表卡片缺少摘要容器');
+      assert(idx.includes('这是一段很长的正文'), '无描述文章未显示自动摘要');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('自动摘要：有 description 优先用手写描述，meta 兜底 excerpt', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-excerpt2-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'withdesc.md'),
+        '---\ntitle: 有描述的文章\ndate: 2020-01-02\ndescription: 我是手写描述\ntags: [x]\n---\n正文内容不应该出现在摘要里。\n');
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'nodesc.md'),
+        '---\ntitle: 没有描述的文章\ndate: 2020-01-01\ntags: [x]\n---\n这是一段很长的正文内容，用来测试自动摘要。\n');
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      const idx = fs.readFileSync(path.join(dir, 'dist', 'index.html'), 'utf8');
+      assert(idx.includes('我是手写描述'), '手写描述未出现在卡片');
+      assert(!idx.includes('不应该出现在摘要'), '正文泄漏进了摘要');
+      const postPage = fs.readFileSync(path.join(dir, 'dist', 'posts', 'nodesc', 'index.html'), 'utf8');
+      assert(/<meta name="description" content="这是一段很长的正文/.test(postPage), '页面 meta 描述未兜底 excerpt');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('自定义集合：列表页 / 详情页 / 分页 + 按日期倒序', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-col-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.mkdirSync(path.join(dir, 'content', 'projects'), { recursive: true });
+      for (let i = 1; i <= 3; i++) {
+        fs.writeFileSync(path.join(dir, 'content', 'projects', `p${i}.md`),
+          `---\ntitle: 项目 ${i}\ndate: 2020-01-0${i}\ndescription: 项目 ${i} 描述\n---\n正文。\n`);
+      }
+      const cfgFile = path.join(dir, 'xfm.config.mjs');
+      fs.writeFileSync(cfgFile, fs.readFileSync(cfgFile, 'utf8').replace(
+        "pagination: { perPage: 9 },",
+        "pagination: { perPage: 9 },\n  collections: { projects: { perPage: 2, title: '作品集', description: '我的项目集合' } },"
+      ));
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      assert(fs.existsSync(path.join(dir, 'dist', 'projects', 'index.html')), '集合列表页未生成');
+      assert(fs.existsSync(path.join(dir, 'dist', 'projects', 'page', '2', 'index.html')), '集合分页页未生成');
+      assert(fs.existsSync(path.join(dir, 'dist', 'projects', 'p1', 'index.html')), '集合详情页未生成');
+      const list = fs.readFileSync(path.join(dir, 'dist', 'projects', 'index.html'), 'utf8');
+      assert(list.includes('<h1>作品集</h1>'), '列表页标题不对：' + list.slice(0, 200));
+      // 按日期倒序：第 1 页 = 项目 3、项目 2
+      assert(list.includes('项目 3') && list.includes('项目 2'), '第 1 页应含最新两项');
+      assert(!list.includes('项目 1'), '第 1 页不应含最旧项');
+      const page2 = fs.readFileSync(path.join(dir, 'dist', 'projects', 'page', '2', 'index.html'), 'utf8');
+      assert(page2.includes('项目 1') && !page2.includes('项目 3'), '第 2 页应只含最旧项');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('集合条目默认不进首页文章流，posts:true 时进入', () => {
+    const build = (extra) => {
+      const d = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-col-posts-'));
+      try {
+        scaffoldSite(d, ['--template=blog'], []);
+        fs.mkdirSync(path.join(d, 'content', 'projects'), { recursive: true });
+        fs.writeFileSync(path.join(d, 'content', 'projects', 'x.md'), '---\ntitle: 集合文章X\ndate: 2020-05-05\n---\n正文\n');
+        const cfg = path.join(d, 'xfm.config.mjs');
+        fs.writeFileSync(cfg, fs.readFileSync(cfg, 'utf8').replace(
+          "pagination: { perPage: 9 },",
+          `pagination: { perPage: 9 },\n  collections: { projects: { ${extra} } },`
+        ));
+        execFileSync(process.execPath, [bin, 'build', d], { stdio: 'pipe' });
+        return fs.readFileSync(path.join(d, 'dist', 'index.html'), 'utf8');
+      } finally {
+        fs.rmSync(d, { recursive: true, force: true });
+      }
+    };
+    assert(!build('').includes('集合文章X'), '默认集合条目不应进首页');
+    assert(build('posts: true').includes('集合文章X'), 'posts:true 应进首页');
+  });
+
+  await test('集合 perPage:0 不分页，单页列出全部', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-col-nopage-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.mkdirSync(path.join(dir, 'content', 'projects'), { recursive: true });
+      for (let i = 1; i <= 4; i++) {
+        fs.writeFileSync(path.join(dir, 'content', 'projects', `p${i}.md`), `---\ntitle: P${i}\ndate: 2020-01-0${i}\n---\n`);
+      }
+      const cfg = path.join(dir, 'xfm.config.mjs');
+      fs.writeFileSync(cfg, fs.readFileSync(cfg, 'utf8').replace(
+        "pagination: { perPage: 9 },",
+        "pagination: { perPage: 9 },\n  collections: { projects: { perPage: 0 } },"
+      ));
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      assert(fs.existsSync(path.join(dir, 'dist', 'projects', 'index.html')), '列表页应生成');
+      assert(!fs.existsSync(path.join(dir, 'dist', 'projects', 'page')), 'perPage:0 不应生成分页页');
+      const list = fs.readFileSync(path.join(dir, 'dist', 'projects', 'index.html'), 'utf8');
+      for (let i = 1; i <= 4; i++) assert(list.includes(`>P${i}<`), `列表缺 P${i}`);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('集合新增条目击穿列表页增量缓存', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-col-inc-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], []);
+      fs.mkdirSync(path.join(dir, 'content', 'projects'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'content', 'projects', 'a.md'), '---\ntitle: A\ndate: 2020-01-01\n---\n');
+      const cfg = path.join(dir, 'xfm.config.mjs');
+      fs.writeFileSync(cfg, fs.readFileSync(cfg, 'utf8').replace(
+        "pagination: { perPage: 9 },",
+        "pagination: { perPage: 9 },\n  collections: { projects: { perPage: 9 } },"
+      ));
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      const before = fs.readFileSync(path.join(dir, 'dist', 'projects', 'index.html'), 'utf8');
+      assert(before.includes('>A<') && !before.includes('>B<'));
+      fs.writeFileSync(path.join(dir, 'content', 'projects', 'b.md'), '---\ntitle: B\ndate: 2020-01-02\n---\n');
+      const r = spawnSync(process.execPath, [bin, 'build', dir, '--incremental'], { encoding: 'utf8' });
+      assert.strictEqual(r.status, 0, '增量构建失败：' + r.stderr);
+      const after = fs.readFileSync(path.join(dir, 'dist', 'projects', 'index.html'), 'utf8');
+      assert(after.includes('>A<') && after.includes('>B<'), '新增条目未刷新列表页：' + after.slice(-300));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('多语言：页 lang / hreflang / x-default / 语言切换 / site.languages', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-i18n-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], ['seo']);
+      let cfg = fs.readFileSync(path.join(dir, 'xfm.config.mjs'), 'utf8');
+      cfg = cfg.replace("    lang: 'zh-CN',", "    lang: 'zh-CN',\n    languages: ['zh-CN', 'en'],");
+      cfg = cfg.replace(/^};\s*$/m, "  plugins: [\n    { name: 'probe', afterBuild(s) { return [{ path: 'i18n.json', contents: JSON.stringify({ langs: s.siteContext.languages, def: s.siteContext.defaultLang, t: (s.siteContext.pages.find((p) => p.url === '/posts/zh/') || {}).translations }) }]; } }\n  ],\n};");
+      fs.writeFileSync(path.join(dir, 'xfm.config.mjs'), cfg);
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'zh.md'), '---\ntitle: 你好\ndate: 2020-01-01\nlang: zh-CN\ntranslationKey: hello\n---\n中文\n');
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'en.md'), '---\ntitle: Hello\ndate: 2020-01-01\nlang: en\ntranslationKey: hello\n---\nEnglish\n');
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      const zh = fs.readFileSync(path.join(dir, 'dist', 'posts', 'zh', 'index.html'), 'utf8');
+      const en = fs.readFileSync(path.join(dir, 'dist', 'posts', 'en', 'index.html'), 'utf8');
+      assert(/<html lang="zh-CN">/.test(zh), 'zh 页 lang 不对');
+      assert(/<html lang="en">/.test(en), 'en 页 lang 不对');
+      assert(/hreflang="zh-CN"/.test(zh) && /hreflang="en"/.test(zh), 'zh 页缺 hreflang');
+      assert(/hreflang="x-default"/.test(zh), '缺 x-default');
+      assert(/og:locale:alternate/.test(zh), '缺 og:locale:alternate');
+      assert(/lang-switcher/.test(zh) && /\/posts\/en\//.test(zh), 'zh 页缺切换到 en 的链接');
+      assert(/lang-switcher/.test(en) && /\/posts\/zh\//.test(en), 'en 页缺切换到 zh 的链接');
+      const info = JSON.parse(fs.readFileSync(path.join(dir, 'dist', 'i18n.json'), 'utf8'));
+      assert.deepStrictEqual(info.langs, ['zh-CN', 'en'], 'site.languages 不对');
+      assert.strictEqual(info.def, 'zh-CN', 'defaultLang 不对');
+      assert(info.t && info.t.length === 2, 'page.translations 应为 2 项：' + JSON.stringify(info.t));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('单语站不输出 hreflang / 语言切换器 / og:locale:alternate', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-mono-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], ['seo']);
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'solo.md'), '---\ntitle: Solo\ndate: 2020-01-01\n---\nbody\n');
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      const solo = fs.readFileSync(path.join(dir, 'dist', 'posts', 'solo', 'index.html'), 'utf8');
+      assert(!/hreflang=/.test(solo), '单语站不应输出 hreflang');
+      assert(!/lang-switcher/.test(solo), '单语站不应输出语言切换器');
+      assert(!/og:locale:alternate/.test(solo), '单语站不应输出 og:locale:alternate');
+      assert(/<html lang="zh-CN">/.test(solo), '默认 lang 应保持');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('多语言：导航按页语言本地化', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xfm-nav-'));
+    try {
+      scaffoldSite(dir, ['--template=blog'], ['seo']);
+      let cfg = fs.readFileSync(path.join(dir, 'xfm.config.mjs'), 'utf8');
+      cfg = cfg.replace("    lang: 'zh-CN',", "    lang: 'zh-CN',\n    languages: ['zh-CN', 'en'],");
+      cfg = cfg.replace("{ title: '关于', url: '/about/' }", "{ title: '关于', url: '/about/', translations: { en: { title: 'About', url: '/about-en/' } } }");
+      fs.writeFileSync(path.join(dir, 'xfm.config.mjs'), cfg);
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'zh.md'), '---\ntitle: 中文\ndate: 2020-01-01\nlang: zh-CN\ntranslationKey: n\n---\n');
+      fs.writeFileSync(path.join(dir, 'content', 'posts', 'en.md'), '---\ntitle: English\ndate: 2020-01-02\nlang: en\ntranslationKey: n\n---\n');
+      execFileSync(process.execPath, [bin, 'build', dir], { stdio: 'pipe' });
+      const zh = fs.readFileSync(path.join(dir, 'dist', 'posts', 'zh', 'index.html'), 'utf8');
+      const en = fs.readFileSync(path.join(dir, 'dist', 'posts', 'en', 'index.html'), 'utf8');
+      assert(zh.includes('>关于<') && !zh.includes('>About<'), 'zh 页导航应显示中文');
+      assert(en.includes('>About<') && !en.includes('>关于<'), 'en 页导航应显示英文');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   await test('模板注释 {# #} 不输出', () => {
     const html = compile('a{# 隐藏 #}b{% for i in [1] %}c{# 循环内注释 #}{% endfor %}')({});
     assert.strictEqual(html, 'abc');

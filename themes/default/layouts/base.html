@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="{{ site.lang }}">
+<html lang="{{ page.lang || site.lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}{% if page.url == '/' %}{{ site.title }}{% else %}{{ page.title }} · {{ site.title }}{% endif %}{% endblock %}</title>
-  <meta name="description" content="{{ page.description || site.description }}">
+  <meta name="description" content="{{ page.desc || site.description }}">
   <link rel="stylesheet" href="{{ site.assets }}style.css">
   {% if site.favicon %}<link rel="icon" href="{{ site.favicon }}">{% endif %}
   {% block head %}{% endblock %}
@@ -14,8 +14,9 @@
     <div class="wrap header-inner">
       <a class="brand" href="/">{{ site.title }}</a>
       <nav class="nav">
-        {% for item in site.nav %}<a href="{{ item.url }}"{% if page.url == item.url %} class="active"{% endif %}>{{ item.title }}</a>
+        {% for item in nav %}<a href="{{ item.url }}"{% if page.url == item.url %} class="active"{% endif %}>{{ item.title }}</a>
         {% endfor %}
+        {% include "lang-switcher.html" %}
         {% if site.search %}<button class="nav-search" type="button" data-search-open aria-label="搜索文章" title="搜索（Ctrl+K）"><span class="nav-search-text">搜索</span><kbd>/</kbd></button>{% endif %}
         <button class="theme-toggle" id="theme-toggle" aria-label="切换主题" title="切换深浅色">◐</button>
       </nav>

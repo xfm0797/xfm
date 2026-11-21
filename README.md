@@ -129,6 +129,7 @@ export default {
     base: '/',                       // sub-path deploy, e.g. '/blog/' prefixes every link
     url: 'https://example.com',      // origin, used by sitemap/RSS
     nav: [{ title: 'Posts', url: '/' }],
+    // languages: ['en', 'zh-CN'],   // i18n: hreflang + a language switcher; a single language = no extra output
   },
   theme: 'default',                  // theme name or path
   plugins: ['sitemap', 'rss'],       // optional — installed xfm-plugin-* deps load anyway
@@ -139,6 +140,8 @@ export default {
   search: { path: 'search.json' },      // used by xfm-plugin-search
   defaults: { layout: 'post.html' },
   pagination: { perPage: 9 },        // home + tag/category/series pages paginate at /page/2/...; add taxonomy:false to paginate the home only
+  dataDir: 'data',                   // *.json / *.yaml / *.js under data/ → site.data; nested dirs → nested object
+  // collections: { projects: { dir: 'projects', perPage: 9 } },  // custom collection → /projects/ list + detail + pagination
   indexes: {                         // category index / archive pages
     categories: { enabled: true, url: '/categories/' },
     archives: { enabled: true, url: '/archives/' },
@@ -230,6 +233,61 @@ Write `![cover](./cover.png)` in `index.md`. The relative URL resolves under the
 - `xfm-plugin-image-size` and `xfm-plugin-deadlinks` already recognize them: dimensions are read from `./cover.png` and relative links are not flagged as dead.
 
 Dotfiles (names starting with `.`) are ignored.
+
+## Data files, collections & i18n
+
+### Global data files (`data/`)
+
+Put `.json`, `.yaml`/`.yml`, `.js`/`.mjs` files in `data/` (configurable via `dataDir`) and read them from any template or plugin as `site.data`. Nested directories become nested objects — `data/team/members.yml` is `site.data.team.members` — and dotfiles are ignored. `.js`/`.mjs` files use their default export:
+
+```js
+// data/meta.js
+export default { version: 3, live: true };   // module.exports = {...} works too (CJS)
+```
+```html
+<p>v{{ site.data.meta.version }}</p>
+```
+
+Changing a data file invalidates every page's cache, since any template may reference `site.data`. Values are JSON-cloned before reaching templates, so functions and circular references are dropped (keeps the worker payload clone-safe).
+
+### Auto excerpt (`page.desc`)
+
+When a page has no `description`, xfm truncates the rendered body to ~140 characters as an `excerpt`. Templates get `page.desc` (`description || excerpt`) — use it in list cards and meta tags instead of repeating the `||` fallback. The default and docs themes already render `post.desc` in post lists and fall back to it in `<meta name="description">`.
+
+### Custom collections
+
+Group files under a content subdirectory into an independent section with its own list page, pagination and layout:
+
+```js
+collections: {
+  projects: {
+    dir: 'projects',            // subdirectory under content/ (defaults to the collection name)
+    url: '/projects/',          // list page URL (defaults to /<name>/)
+    layout: 'collection.html',  // list layout; both themes ship collection.html
+    perPage: 9,                 // 0 = no pagination; inherits site pagination.perPage by default
+    title: 'Projects',
+    description: 'Things I built',
+    posts: false,               // true = also include items in the default site.posts stream
+  },
+}
+```
+
+`content/projects/*.md` become normal detail pages (own URL + layout from front-matter/defaults), and xfm generates `/projects/` plus `/projects/page/2/…` listing them sorted by date. Items are kept out of the default post stream, RSS, prev/next and the homepage unless `posts: true`. Templates iterate `page.data.posts` on the list page, or read `site.collections.projects` (`.count`, `.items`, `.url`) anywhere.
+
+### Multi-language (i18n)
+
+Declare `site.languages` to enable translations:
+
+```js
+site: { lang: 'en', languages: ['en', 'zh-CN'] }
+```
+
+- A page's language is its front-matter `lang`, falling back to `site.lang`; `<html lang>` follows the page.
+- Pages sharing a `translationKey` (front-matter) are translations of each other and receive `page.translations` — `[{ lang, url, title }]`.
+- With `xfm-plugin-seo`, each page gets `<link rel="alternate" hreflang="…">` for every translation plus `x-default`, and `og:locale:alternate` entries. **A single-language site outputs none of this**, so existing pages stay byte-identical.
+- The default and docs themes include a `lang-switcher.html` partial in the nav (hidden when a page has no translations).
+- Localize the nav by giving an item a `translations` map: `{ title: 'About', url: '/about/', translations: { 'zh-CN': { title: '关于', url: '/about-zh/' } } }` — the engine serves the entry matching the current page's language.
+- `site.languages` and `site.defaultLang` are available in every template.
 
 ## Hook semantics
 

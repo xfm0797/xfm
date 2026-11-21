@@ -1,0 +1,1 @@
+{% if page.translations and page.translations.length > 1 %}<span class="lang-switcher">{% for t in page.translations %}{% if t.lang == page.lang %}<span class="lang-current">{{ t.lang }}</span>{% else %}<a class="lang-link" href="{{ t.url }}">{{ t.lang }}</a>{% endif %}{% endfor %}</span>{% endif %}
