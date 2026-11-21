@@ -359,6 +359,10 @@ The plugin manual — hook semantics, load order, every option, and a full autho
 | [`xfm-plugin-comments`](./packages/comments) | comments from giscus / beaudar / utterances / Disqus / Waline / Twikoo / Valine / Gitalk / Artalk / Cusdis | `comments.provider`, `comments.repo`, `comments.serverURL`, … |
 | [`xfm-plugin-analytics`](./packages/analytics) | Umami / Plausible / GA / Baidu / custom | `analytics.provider`, … |
 
+**Upgrading from `xfm-plugin-giscus`?** That package is deprecated on npm — `xfm-plugin-comments`
+replaces it. The config key is still `comments`, so an existing `provider: 'giscus'` block keeps
+working; only the install line changes.
+
 Every package has its own README with install, options and output.
 
 `related` scores posts by shared tags (3), category (2) and series (3) and hands the result to

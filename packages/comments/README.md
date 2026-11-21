@@ -11,6 +11,9 @@ Part of [xfm](https://github.com/xfm0797/xfm) — a zero-dependency static site 
 npm i -D xfm-plugin-comments
 ```
 
+> Replaces the deprecated `xfm-plugin-giscus`. The config key is unchanged — drop the old package,
+> install this one, and an existing `comments: { provider: 'giscus', … }` block keeps working.
+
 That is all — the generator loads every `xfm-plugin-*` dependency found in your site's
 `package.json` automatically (same as Hexo). Restart `xfm dev` if it is already running.
 

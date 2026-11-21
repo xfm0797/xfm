@@ -343,6 +343,9 @@ export default {
 | [`xfm-plugin-comments`](./packages/comments) | 十家评论系统：giscus / beaudar / utterances / Disqus / Waline / Twikoo / Valine / Gitalk / Artalk / Cusdis | `comments.provider`、`comments.repo`、`comments.serverURL` … |
 | [`xfm-plugin-analytics`](./packages/analytics) | Umami / Plausible / GA / 百度 / 自定义 | `analytics.provider` … |
 
+**从 `xfm-plugin-giscus` 升级？** 那个包已在 npm 上标记弃用，由 `xfm-plugin-comments` 取代。配置键仍是
+`comments`，原来的 `provider: 'giscus'` 原样可用，只需换掉安装命令。
+
 每个包都有自己的 README，写了安装方式、可选项与产物。
 
 `related` 在渲染前按标签（3 分）/ 分类（2 分）/ 系列（3 分）加权算好写进 `page.data.related`，因此不会让渲染退回单线程；两套主题只要发现这个键就渲染推荐区块。`seo` 不会重复注入模板里已经手写的 canonical / `og:*`。`minify` 跳过 `<pre>`、`<code>`、`<textarea>`、`<script>`、`<style>`，dev 模式完全不执行。
