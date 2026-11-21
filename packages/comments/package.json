@@ -1,7 +1,7 @@
 {
-  "name": "xfm-plugin-giscus",
-  "version": "0.4.2",
-  "description": "GitHub Discussions comments for xfmpress — giscus or utterances",
+  "name": "xfm-plugin-comments",
+  "version": "0.4.16",
+  "description": "Comment systems for xfmpress — giscus, beaudar, utterances, Disqus, Waline, Twikoo, Valine, Gitalk, Artalk, Cusdis",
   "type": "commonjs",
   "main": "index.js",
   "files": [
@@ -17,17 +17,26 @@
     "xfmpress-plugin",
     "static-site-generator",
     "plugin",
-    "giscus"
+    "comments",
+    "giscus",
+    "utterances",
+    "disqus",
+    "waline",
+    "twikoo",
+    "valine",
+    "gitalk",
+    "artalk",
+    "cusdis"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/xfm0797/xfm.git",
-    "directory": "packages/giscus"
+    "directory": "packages/comments"
   },
   "bugs": {
     "url": "https://github.com/xfm0797/xfm/issues"
   },
-  "homepage": "https://github.com/xfm0797/xfm/tree/main/packages/giscus#readme",
+  "homepage": "https://github.com/xfm0797/xfm/tree/main/packages/comments#readme",
   "author": "xfm0797",
   "license": "MIT",
   "peerDependencies": {

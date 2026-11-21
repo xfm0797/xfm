@@ -2306,8 +2306,8 @@ async function testExtras() {
       assert(!off.includes('plausible'), 'front-matter analytics:false 未生效');
     });
 
-    await test('giscus 只给文章页插评论区', () => {
-      const plugin = require('xfm-plugin-giscus')({
+    await test('comments：giscus 只给文章页插评论区', () => {
+      const plugin = require('xfm-plugin-comments')({
         config: { comments: { repo: 'o/r', repoId: 'R_x', category: 'General', categoryId: 'D_x' } },
         mode: 'production',
         helpers: require('../lib/engine/helpers'),
@@ -2318,6 +2318,7 @@ async function testExtras() {
       });
       assert(post.includes('giscus.app/client.js'), '文章页未插入评论区');
       assert(post.indexOf('data-xfm-comments') < post.indexOf('</article>'), '没插在文章内');
+      assert(post.includes('iframe.giscus-frame'), '缺主题同步脚本');
 
       const home = plugin.transformHtml('<main>x</main></body>', { page: { url: '/', date: '', data: {} } });
       assert(!home.includes('giscus'), '首页不该有评论区');
@@ -2326,6 +2327,84 @@ async function testExtras() {
         page: { url: '/p/', date: '2026-01-01', data: { comments: false } },
       });
       assert(!off.includes('giscus'), 'front-matter comments:false 未生效');
+
+      const standalone = plugin.transformHtml('<article>x</article></body>', {
+        page: { url: '/p/', date: '2026-01-01', data: { type: 'page' } },
+      });
+      assert(!standalone.includes('giscus'), '独立页面不该有评论区');
+    });
+
+    await test('comments：十家 provider 各自插入正确的脚本与容器', () => {
+      const helpers = require('../lib/engine/helpers');
+      const make = (conf) =>
+        require('xfm-plugin-comments')({
+          config: { site: { base: '/blog/', url: 'https://ex.com' }, comments: conf },
+          mode: 'production',
+          helpers,
+        });
+      const post = { url: '/posts/x/', date: '2026-01-01', title: '篇名', data: {} };
+      const render = (conf) =>
+        make(conf).transformHtml('<html><head></head><body><article>正文</article></body></html>', { page: post });
+
+      const cases = [
+        ['giscus', { provider: 'giscus', repo: 'o/r', repoId: 'R_1' }, ['giscus.app/client.js', 'data-repo-id="R_1"']],
+        ['beaudar', { provider: 'beaudar', repo: 'o/r', repoId: 'R_1' }, ['beaudar.lipk.org/client.js']],
+        ['utterances', { provider: 'utterances', repo: 'o/r' }, ['utteranc.es/client.js', 'issue-term="pathname"']],
+        ['disqus', { provider: 'disqus', shortname: 'meblog' }, ['.disqus.com/embed.js', '"meblog"', 'this.page.identifier = "/blog/posts/x/"']],
+        ['waline', { provider: 'waline', serverURL: 'https://w.example' }, ['@waline/client@v3/dist/waline.css', '"el":"#waline"', 'html[data-theme=']],
+        ['twikoo', { provider: 'twikoo', envId: 'env-1' }, ['twikoo@2/dist/twikoo.min.js', 'twikoo.init']],
+        ['valine', { provider: 'valine', appId: 'a', appKey: 'k' }, ['valine@1/dist/Valine.min.js', 'new Valine']],
+        ['gitalk', { provider: 'gitalk', clientID: 'c', clientSecret: 's', repo: 'r', owner: 'o', admin: ['o'] }, ['gitalk/dist/gitalk.css', 'new Gitalk', '"admin":["o"]']],
+        ['artalk', { provider: 'artalk', server: 'https://a.example' }, ['artalk@2/dist/Artalk.js', 'Artalk.init']],
+        ['cusdis', { provider: 'cusdis', appId: 'app-1' }, ['cusdis.es.js', 'data-page-id="/blog/posts/x/"']],
+      ];
+
+      for (const [name, conf, needles] of cases) {
+        const html = render(conf);
+        assert(html.includes(`data-comments-provider="${name}"`), `${name}: 没有插入评论区`);
+        for (const n of needles) assert(html.includes(n), `${name}: 缺少 ${n}`);
+        // 容器与标题只出现一次，绑定键带上站点 base
+        assert.strictEqual(html.split('data-xfm-comments').length - 1, 1, `${name}: 容器重复`);
+        assert(html.includes('>评论</h2>'), `${name}: 缺标题`);
+      }
+
+      // 绑定键可换：url / title
+      const byUrl = render({ provider: 'waline', serverURL: 'https://w', identifier: 'url' });
+      assert(byUrl.includes('https://ex.com/blog/posts/x/'), 'identifier: url 没生效');
+      const byTitle = render({ provider: 'waline', serverURL: 'https://w', identifier: 'title' });
+      assert(byTitle.includes('篇名'), 'identifier: title 没生效');
+    });
+
+    await test('comments：缺配置 / 未知 provider / dev 都不插入，模板留挂载点时只补脚本', () => {
+      const helpers = require('../lib/engine/helpers');
+      const warn = console.warn;
+      console.warn = () => {};
+      try {
+        const mk = (conf, mode = 'production') =>
+          require('xfm-plugin-comments')({ config: { site: { base: '/' }, comments: conf }, mode, helpers });
+        const post = { url: '/p/', date: '2026-01-01', data: {} };
+
+        const missing = mk({ provider: 'twikoo' }).transformHtml('<article>x</article></body>', { page: post });
+        assert(!missing.includes('comments-provider'), '缺 envId 仍然插入了评论区');
+
+        const unknown = mk({ provider: 'nope' }).transformHtml('<article>x</article></body>', { page: post });
+        assert(!unknown.includes('comments-provider'), '未知 provider 仍然插入了评论区');
+
+        const dev = mk({ provider: 'giscus', repo: 'o/r', repoId: 'R' }, 'development');
+        assert(!dev.transformHtml('<article>x</article></body>', { page: post }).includes('giscus'), 'dev 下不该插入');
+
+        const devOn = mk({ provider: 'giscus', repo: 'o/r', repoId: 'R', dev: true }, 'development');
+        assert(devOn.transformHtml('<article>x</article></body>', { page: post }).includes('giscus.app'), 'dev: true 应插入');
+
+        const mounted = mk({ provider: 'giscus', repo: 'o/r', repoId: 'R' }).transformHtml(
+          '<article>x</article><div data-xfm-comments></div></body>',
+          { page: post }
+        );
+        assert.strictEqual(mounted.split('data-xfm-comments').length - 1, 1, '挂载点被重复创建了');
+        assert(mounted.includes('giscus.app/client.js'), '没补脚本');
+      } finally {
+        console.warn = warn;
+      }
     });
 
     await test('redirect 在旧地址生成跳转页', () => {
