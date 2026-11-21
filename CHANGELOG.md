@@ -7,6 +7,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
+## [0.4.16] - 2026-11-21
+
+### Changed
+
+- **`xfm-plugin-giscus` → `xfm-plugin-comments`** — the same plugin now serves ten comment
+  systems behind one `comments.provider` switch: `giscus`, `beaudar`, `utterances`, `disqus`,
+  `waline`, `twikoo`, `valine`, `gitalk`, `artalk`, `cusdis`. The config key is unchanged, so
+  existing `provider: 'giscus'` setups keep working; the package rename only changes the
+  install line. New options: `comments.identifier` (`path` | `url` | `title`) decides what a
+  thread is bound to. Required fields are validated per provider — a missing `repoId` / `envId`
+  warns and skips the widget instead of emitting a broken one, and unknown providers list the
+  supported names. Stylesheets (Waline, Gitalk, Artalk) are injected into `<head>` only on
+  pages that mount a widget.
+
 ## [0.4.15] - 2026-11-21
 
 ### Added
