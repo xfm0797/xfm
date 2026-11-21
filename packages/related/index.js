@@ -92,7 +92,8 @@ module.exports = (site) => {
           // posts 已按日期倒序，大标签只考察最近的一批
           const pool = list.length > MAX_TAGS ? list.slice(0, MAX_TAGS) : list;
           for (const q of pool) {
-            if (q === p) continue;
+            // 多语言站只在同一种语言里推荐，避免中文文章推荐出英文版本
+            if (q === p || q.lang !== p.lang) continue;
             score.set(q, (score.get(q) || 0) + weight);
           }
         };

@@ -1,6 +1,6 @@
 {
   "name": "xfm-plugin-feed-json",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "JSON Feed 1.1 output for xfmpress",
   "type": "commonjs",
   "main": "index.js",

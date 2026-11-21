@@ -1,6 +1,6 @@
 {
   "name": "xfm-plugin-related",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Related posts by shared tags, category and series for xfmpress",
   "type": "commonjs",
   "main": "index.js",

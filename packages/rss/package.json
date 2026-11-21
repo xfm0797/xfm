@@ -1,6 +1,6 @@
 {
   "name": "xfm-plugin-rss",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "RSS 2.0 feed for xfmpress",
   "type": "commonjs",
   "main": "index.js",

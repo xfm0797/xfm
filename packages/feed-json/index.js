@@ -27,7 +27,8 @@ module.exports = (site) => {
     afterBuild(site) {
       const siteConf = site.config.site || {};
       const posts = (site.documents || [])
-        .filter((p) => p.date && p.data.type !== 'page' && p.data.rss !== false && p.url !== '/')
+        // inStream=false：多语言站的翻译版本不进默认语言的订阅源
+        .filter((p) => p.date && p.inStream !== false && p.data.type !== 'page' && p.data.rss !== false && p.url !== '/')
         .slice(0, limit);
 
       const feedUrl = absoluteUrl(siteConf, '/' + (cfg.path || 'feed.json'));

@@ -16,7 +16,8 @@ module.exports = (site) => {
       // 站点根：有 url 时是绝对地址，没配则退回带 base 的相对路径
       const root = absoluteUrl(cfg, '/').replace(/\/$/, '') || '/';
       const posts = site.documents
-        .filter((p) => p.date && p.data.type !== 'page' && p.data.rss !== false && p.url !== '/')
+        // inStream=false：多语言站的翻译版本不进默认语言的订阅源
+        .filter((p) => p.date && p.inStream !== false && p.data.type !== 'page' && p.data.rss !== false && p.url !== '/')
         .slice(0, limit);
 
       const items = posts
