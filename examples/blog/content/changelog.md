@@ -2,19 +2,21 @@
 title: 更新日志
 layout: page.html
 type: page
-description: xfmpress 从 0.1.0 到 0.4.14 的全部版本记录，最新的在最前面。
+description: xfmpress 从 0.1.0 到 0.4.16 的全部版本记录，最新的在最前面。
 ---
 
 xfmpress 用 [语义化版本](https://semver.org/lang/zh-CN/)：补丁位从 `x.y.0` 一路滚到 `x.y.99`，再进 `x.y+1.0`（`0.4.99` → `0.5.0`）。新功能也走补丁位，所以版本号涨得比较快。英文原文在仓库的 `CHANGELOG.md`，本页随每次发版同步。
 
 ::: tip 当前版本
-**0.4.14** · 2026-11-21 · 全局数据文件、自定义集合、多语言 i18n 与自动摘要；修复陈旧目录清理的并行竞态。测试 163 项全绿。
+**0.4.16** · 2026-11-21 · 评论插件扩成十家（giscus / Waline / Twikoo / Disqus …）；新增 KaTeX 公式与 Mermaid 图表插件。测试 176 项全绿。
 :::
 
 ## 版本一览
 
 | 版本 | 日期 | 类型 | 重点 |
 | --- | --- | --- | --- |
+| 0.4.16 | 2026-11-21 | 特性 | 评论插件支持十家（giscus / beaudar / utterances / Disqus / Waline / Twikoo / Valine / Gitalk / Artalk / Cusdis） |
+| 0.4.15 | 2026-11-21 | 特性 | `xfm-plugin-math`（构建期 KaTeX）与 `xfm-plugin-mermaid`；修复插件产物可见性 |
 | 0.4.14 | 2026-11-21 | 特性 | `data/` 数据文件、`collections` 自定义集合、多语言 hreflang 与语言切换、`page.desc` 自动摘要 |
 | 0.4.13 | 2026-11-15 | 性能 | 重复构建不再重写未变化的文件；写盘 5.3s → 0.9s |
 | 0.4.12 | 2026-11-15 | Markdown | 列表项首的缩进代码块；段落前导空格 |
@@ -35,6 +37,35 @@ xfmpress 用 [语义化版本](https://semver.org/lang/zh-CN/)：补丁位从 `x
 | 0.2.0 | 2026-11-04 | 特性 | Markdown 大补：引用式链接、脚注、Setext、缩进代码块 |
 | 0.1.1 | 2026-11-03 | 文档 | 文档中英成对；dev 端口统一 4173 |
 | 0.1.0 | 2026-11-02 | 首个版本 | 零依赖静态站点生成器 |
+
+## 0.4.16 · 2026-11-21
+
+评论插件从一个「GitHub 专用」的小工具扩成十家通吃：**giscus、beaudar、utterances、Disqus、Waline、Twikoo、Valine、Gitalk、Artalk、Cusdis**，切一个 `provider` 就行，模板和样式都不用动。
+
+### 变更
+
+- 包名 `xfm-plugin-giscus` → **`xfm-plugin-comments`**。配置键一直是 `comments`，所以老配置里 `provider: 'giscus'` 原样可用，只需要换安装命令。
+- 新增 `comments.identifier`：评论与哪一页绑定，`path`（默认，站点内路径，换域名不丢评论）、`url`（完整地址）、`title`（标题）。
+- 必需字段按 provider 校验：giscus 缺 `repoId`、twikoo 缺 `envId`、gitalk 缺 `admin` 之类，构建日志里直接说缺什么，页面照常输出但不留半截坏控件；未知 provider 会把可选列表打出来。
+- 只有用到样式的 provider（Waline、Gitalk、Artalk）才往 `<head>` 插样式表，且只插在真正挂了控件的页面。
+- 依然只挂文章页：首页、归档、标签页、独立页面不会出现评论区；front-matter 写 `comments: false` 可单页关闭。
+
+### 跟随主题
+
+giscus 与 beaudar 通过 `postMessage` 跟着站点的 `data-theme` 切换；Waline 用 CSS 选择器 `html[data-theme="dark"]` 自己切；Cusdis 用 `auto`。
+
+## 0.4.15 · 2026-11-21
+
+两个新官方插件，一个在构建期把公式画好，一个把图表留给浏览器。
+
+### 新增
+
+- **`xfm-plugin-math`**：构建期用 KaTeX 渲染，页面里只有 HTML + CSS，前端零 JS、零 CDN 请求。支持 `$…$`、`$$…$$`、`\(…\)`、`\[…\]`；公式在 Markdown 解析前换成占位符，`$a_1$` 的下划线不会再变成斜体；围栏/缩进/行内代码与 `\$` 都保持原样。CSS 与 woff2 字体（约 300KB）复制进 `assets/katex/`，只给有公式的页面注入。
+- **`xfm-plugin-mermaid`**：` ```mermaid ` 围栏块转成 `<pre class="mermaid">`，浏览器里画成 SVG；只有含图表的页面才注入渲染脚本，默认自托管 `mermaid.min.js`，也可切 CDN。
+
+### 修复
+
+- **后运行的 `afterBuild` 插件看不到前面插件的产物**：`site.extraFiles` 原本在整个钩子跑完才赋值，导致 `deadlinks` 把 `assets/katex/katex.min.css` 报成死链。现在每跑完一个插件就累积一次。
 
 ## 0.4.13 · 2026-11-15
 

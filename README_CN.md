@@ -336,14 +336,14 @@ export default {
 | [`xfm-plugin-minify`](./packages/minify) | 更小的 HTML（仅生产构建） | `minify.enabled`、`minify.aggressive` |
 | [`xfm-plugin-image-size`](./packages/image-size) | 读文件头给 `&lt;img&gt;` 补 `width`/`height` | `imageSize.publicDir`、`imageSize.lazy` |
 | [`xfm-plugin-deadlinks`](./packages/deadlinks) | 列出指向空处的站内链接 | `deadlinks.strict`、`deadlinks.ignore` |
-| [`xfm-plugin-giscus`](./packages/giscus) | GitHub Discussions 评论（giscus / utterances） | `comments.repo`、`comments.repoId` … |
+| [`xfm-plugin-comments`](./packages/comments) | 十家评论系统：giscus / beaudar / utterances / Disqus / Waline / Twikoo / Valine / Gitalk / Artalk / Cusdis | `comments.provider`、`comments.repo`、`comments.serverURL` … |
 | [`xfm-plugin-analytics`](./packages/analytics) | Umami / Plausible / GA / 百度 / 自定义 | `analytics.provider` … |
 
 每个包都有自己的 README，写了安装方式、可选项与产物。
 
 `related` 在渲染前按标签（3 分）/ 分类（2 分）/ 系列（3 分）加权算好写进 `page.data.related`，因此不会让渲染退回单线程；两套主题只要发现这个键就渲染推荐区块。`seo` 不会重复注入模板里已经手写的 canonical / `og:*`。`minify` 跳过 `<pre>`、`<code>`、`<textarea>`、`<script>`、`<style>`，dev 模式完全不执行。
 
-`image-size` 只读本地图片的头部字节（PNG / JPEG / GIF / WebP / SVG），让浏览器提前留出位置，图片加载完页面不会往下蹦一下；`deadlinks` 在构建结束后拿所有站内链接去对真实产物，列出指向空处的那几条（外链一律不发请求）；`redirect` 给每个旧地址写一个 `meta refresh` + `location.replace` 的跳转页，文章换地址不丢外链；`pwa` 让站点可安装、可离线。`giscus` 与 `analytics` 会加载第三方脚本，所以默认只在生产构建生效，想本地预览就把 `dev: true` 打开。
+`image-size` 只读本地图片的头部字节（PNG / JPEG / GIF / WebP / SVG），让浏览器提前留出位置，图片加载完页面不会往下蹦一下；`deadlinks` 在构建结束后拿所有站内链接去对真实产物，列出指向空处的那几条（外链一律不发请求）；`redirect` 给每个旧地址写一个 `meta refresh` + `location.replace` 的跳转页，文章换地址不丢外链；`pwa` 让站点可安装、可离线。`comments` 与 `analytics` 会加载第三方脚本，所以默认只在生产构建生效，想本地预览就把 `dev: true` 打开。
 
 ### 页面级开关（front-matter）
 

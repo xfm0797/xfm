@@ -352,7 +352,7 @@ The plugin manual — hook semantics, load order, every option, and a full autho
 | [`xfm-plugin-minify`](./packages/minify) | smaller HTML (production only) | `minify.enabled`, `minify.aggressive` |
 | [`xfm-plugin-image-size`](./packages/image-size) | `width`/`height` on `&lt;img&gt;`, read from the file header | `imageSize.publicDir`, `imageSize.lazy` |
 | [`xfm-plugin-deadlinks`](./packages/deadlinks) | lists internal links that point nowhere | `deadlinks.strict`, `deadlinks.ignore` |
-| [`xfm-plugin-giscus`](./packages/giscus) | GitHub Discussions comments (giscus / utterances) | `comments.repo`, `comments.repoId`, … |
+| [`xfm-plugin-comments`](./packages/comments) | comments from giscus / beaudar / utterances / Disqus / Waline / Twikoo / Valine / Gitalk / Artalk / Cusdis | `comments.provider`, `comments.repo`, `comments.serverURL`, … |
 | [`xfm-plugin-analytics`](./packages/analytics) | Umami / Plausible / GA / Baidu / custom | `analytics.provider`, … |
 
 Every package has its own README with install, options and output.
@@ -368,7 +368,7 @@ before the image arrives — no layout jump, no extra dependency. `deadlinks` ch
 internal `href`/`src` against the real output set after the build and prints what is broken
 (never fetches external URLs). `redirect` writes a `meta refresh` + `location.replace` page at
 each old address, so moved posts keep their inbound links. `pwa` makes the site installable
-and readable offline; `giscus` and `analytics` are opt-in because they load a third-party
+and readable offline; `comments` and `analytics` are opt-in because they load a third-party
 script — both are skipped in `xfm dev` unless you set `dev: true`.
 
 ### Per-page switches (front-matter)
