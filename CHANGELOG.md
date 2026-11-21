@@ -7,10 +7,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Versioning note: patches roll from `0.4.0` up to `0.4.99`, then the minor bumps
 to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
-## [Unreleased]
+## [0.4.15] - 2026-11-21
 
 ### Added
 
+- **`xfm-plugin-math`** — KaTeX rendering at build time. Inline `$a^2$`, display `$$…$$` and
+  the LaTeX `\(…\)` / `\[…\]` forms all work; formulas are swapped for private-use
+  placeholders before Markdown runs, so `$a_1$` no longer turns its underscore into
+  emphasis, and code blocks plus `\$` are left alone. Pages get plain KaTeX HTML with the
+  stylesheet and woff2 fonts copied into `assets/katex/` — no client-side JS, no CDN.
+- **`xfm-plugin-mermaid`** — fenced `mermaid` blocks become `<pre class="mermaid">` and are
+  drawn in the browser. The renderer is injected only on pages that contain a diagram,
+  served locally from `assets/mermaid/` (or from a CDN with `mermaid.mode: 'cdn'`), and can
+  be disabled per page with `mermaid: false`.
+- Both plugins ship with READMEs, tests (`test/run.js`) and a demo post on the example site.
 - **Example site demos for 0.4.14** — `examples/blog` now exercises every new feature: a
   `projects` custom collection (`/projects/` in the nav, kept out of the post stream), a
   Chinese/English `about` translation pair with localized nav labels and `hreflang`, an
@@ -20,6 +30,10 @@ to `0.5.0`; the cycle repeats (`0.5.1` … `0.5.99` → `0.6.0`).
 
 ### Fixed
 
+- **Later `afterBuild` plugins could not see earlier plugin output.** `site.extraFiles` was
+  only filled after the whole hook ran, so `xfm-plugin-deadlinks` reported assets generated
+  by other plugins (e.g. `assets/katex/katex.min.css`) as dead links. Outputs are now
+  accumulated during the hook, in plugin order.
 - **Collection items leaked into RSS / JSON Feed.** Both feed plugins read `site.documents`
   (not the post stream), so collection entries marked as independent still appeared in
   `feed.xml` / `feed.json`. Non-`posts` collections now mark their items `rss: false`
