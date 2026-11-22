@@ -1,0 +1,53 @@
+<aside class="sidebar">
+  <div class="side-card author-card">
+    <div class="avatar">
+      {% if site.avatar %}<img src="{{ site.avatar }}" alt="{{ site.author || site.title }}">{% else %}<span class="avatar-glyph" aria-hidden="true">✍</span>{% endif %}
+    </div>
+    <div class="author-name">{{ site.author || site.title }}</div>
+    {% if site.description %}<p class="author-desc">{{ site.description }}</p>{% endif %}
+    <div class="author-stats">
+      <a href="/archives/"><b>{{ postsTotal }}</b><span>文章</span></a>
+      <a href="/categories/"><b>{{ site.categories.length }}</b><span>分类</span></a>
+      <span class="stat-static"><b>{{ site.tags.length }}</b><span>标签</span></span>
+    </div>
+    <a class="side-rss" href="/feed.xml">RSS 订阅</a>
+  </div>
+
+  {% if site.categories.length %}
+  <div class="side-card">
+    <h3 class="side-title">分类</h3>
+    <ul class="side-list">
+      {% for c in site.categories %}{% if loop.index <= 6 %}
+      <li><a href="{{ c.url }}">{{ c.name }}</a><span class="side-count">{{ c.count }}</span></li>
+      {% endif %}{% endfor %}
+    </ul>
+    {% if site.categories.length > 6 %}<a class="side-more" href="/categories/">全部分类 →</a>{% endif %}
+  </div>
+  {% endif %}
+
+  {% if site.tags.length %}
+  <div class="side-card">
+    <h3 class="side-title">标签</h3>
+    <div class="side-tags">
+      {% for t in site.tags %}{% if loop.index <= 16 %}<a class="chip" href="{{ t.url }}">{{ t.name }}</a>{% endif %}{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if site.posts.length %}
+  <div class="side-card">
+    <h3 class="side-title">最新文章</h3>
+    <ul class="side-list recent">
+      {% for p in site.posts %}{% if loop.index <= 5 %}
+      <li><a href="{{ p.url }}">{{ p.title }}</a></li>
+      {% endif %}{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="side-card">
+    <h3 class="side-title">归档</h3>
+    <p class="side-text">共 {{ postsTotal }} 篇文章，按时间线整理。</p>
+    <a class="side-more" href="/archives/">浏览归档 →</a>
+  </div>
+</aside>

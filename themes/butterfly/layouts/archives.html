@@ -1,0 +1,22 @@
+{% extend "base.html" %}
+{% block main %}
+<section class="hero-page">
+  <h1>{{ page.title }}</h1>
+  {% if page.description %}<p class="hero-sub">{{ page.description }}</p>{% endif %}
+</section>
+<div class="page-narrow">
+  <div class="timeline">
+    {% for y in page.data.years %}<div class="tl-year">{{ y.year }}<span class="tl-count">{{ y.posts.length }} 篇</span></div>
+    <ul class="tl-list">
+      {% for post in y.posts %}<li class="tl-item">
+        <span class="tl-dot" aria-hidden="true"></span>
+        <time class="tl-date">{{ post.date }}</time>
+        <a class="tl-link" href="{{ post.url }}">{{ post.title }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="empty">还没有文章，运行 <code>xfm new 我的第一篇文章</code> 开始写作。</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

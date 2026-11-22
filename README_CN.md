@@ -414,6 +414,7 @@ xfm/
 ├── lib/cli/scaffold.js # create 脚手架
 ├── packages/           # 官方插件，各自以 xfm-plugin-* 独立发布
 ├── themes/default/     # 博客主题（深浅色）
+├── themes/butterfly/   # 博客主题（仿 hexo-theme-butterfly）
 ├── themes/docs/        # 文档主题（侧栏导航）
 ├── examples/blog/      # 可构建的示例站点
 ├── bench/bench.js      # 基准测试（分阶段耗时）

@@ -1,0 +1,64 @@
+{% extend "base.html" %}
+{% block title %}{{ page.title }} · {{ site.title }}{% endblock %}
+{% block banner %}
+<section class="banner post-banner{% if page.data.cover %} has-cover{% endif %}">
+  {% if page.data.cover %}<img class="banner-img" src="{{ page.data.cover }}" alt="">{% endif %}
+  <div class="banner-mask"></div>
+  <div class="banner-content">
+    <h1>{{ page.title }}</h1>
+    <div class="post-banner-meta">
+      <time>{{ page.date }}</time>
+      {% if page.updated && page.updated != page.date %}<time class="banner-updated">更新于 {{ page.updated }}</time>{% endif %}
+      {% if page.category %}<a class="cat" href="/categories/{{ page.category }}/">{{ page.category }}</a>{% endif %}
+      {% for t in page.tags %}<a class="tag" href="/tags/{{ t }}/"># {{ t }}</a>{% endfor %}
+      {% if page.readTime %}<span>{{ page.readTime }} 分钟阅读</span>{% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block main %}
+<article class="post-layout{% if headings.length %} with-toc{% endif %}">
+  <div class="post-main">
+    <div class="post-body-card">
+      <div class="prose">{{ content | safe }}</div>
+    </div>
+
+    {% if site.author %}
+    <div class="post-copyright">
+      <p class="pc-title">本文作者：{{ site.author }}</p>
+      <p>本文链接：{{ page.url }}</p>
+      <p>版权声明：转载请注明出处。</p>
+    </div>
+    {% endif %}
+
+    <nav class="post-adjacent" aria-label="上下篇">
+      {% if page.data.prev %}<a class="adj prev" href="{{ page.data.prev.url }}"><span class="adj-label">← 上一篇</span><span class="adj-title">{{ page.data.prev.title }}</span></a>
+      {% else %}<span class="adj is-disabled"></span>{% endif %}
+      {% if page.data.next %}<a class="adj next" href="{{ page.data.next.url }}"><span class="adj-label">下一篇 →</span><span class="adj-title">{{ page.data.next.title }}</span></a>
+      {% else %}<span class="adj is-disabled"></span>{% endif %}
+    </nav>
+
+    {% if page.data.related.length %}
+    <section class="related">
+      <h2>相关推荐</h2>
+      <ul>
+        {% for item in page.data.related %}
+        <li>
+          <a href="{{ item.url }}">{{ item.title }}</a>
+          {% if item.date %}<time>{{ item.date }}</time>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+
+  {% if headings.length %}
+  <aside class="post-side">
+    <div class="side-card toc-card">
+      {% include "toc.html" %}
+    </div>
+  </aside>
+  {% endif %}
+</article>
+{% endblock %}

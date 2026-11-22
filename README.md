@@ -445,6 +445,7 @@ xfm/
 ├── lib/cli/scaffold.js # create scaffolding
 ├── packages/           # official plugins, published separately as xfm-plugin-*
 ├── themes/default/     # blog theme (light/dark)
+├── themes/butterfly/   # blog theme styled after hexo-theme-butterfly
 ├── themes/docs/        # docs theme (sidebar navigation)
 ├── examples/blog/      # buildable example site
 ├── bench/bench.js      # benchmark (per-stage timings)

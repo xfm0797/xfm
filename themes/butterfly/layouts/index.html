@@ -1,0 +1,24 @@
+{% extend "base.html" %}
+{% block title %}{{ site.title }}{% endblock %}
+{% block banner %}
+<section class="banner home-banner">
+  {% if site.banner %}<img class="banner-img" src="{{ site.banner }}" alt="">{% endif %}
+  <div class="banner-mask"></div>
+  <div class="banner-content">
+    <h1>{{ site.title }}</h1>
+    {% if site.subtitle || site.description %}<p class="banner-sub">{{ site.subtitle || site.description }}</p>{% endif %}
+  </div>
+  <a class="scroll-down" href="#main" aria-label="向下滚动"><i></i></a>
+</section>
+{% endblock %}
+{% block main %}
+<div class="layout with-side">
+  <div class="content-area">
+    <div class="post-grid">
+      {% include "post-list.html" %}
+    </div>
+    {% include "pager.html" %}
+  </div>
+  {% include "sidebar.html" %}
+</div>
+{% endblock %}

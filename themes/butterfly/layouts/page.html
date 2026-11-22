@@ -1,0 +1,12 @@
+{% extend "base.html" %}
+{% block main %}
+<section class="hero-page">
+  <h1>{{ page.title }}</h1>
+  {% if page.description %}<p class="hero-sub">{{ page.description }}</p>{% endif %}
+</section>
+<div class="page-narrow">
+  <div class="post-body-card">
+    <div class="prose">{{ content | safe }}</div>
+  </div>
+</div>
+{% endblock %}
