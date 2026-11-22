@@ -6,6 +6,7 @@
   <title>{% if page.url == '/' %}{{ site.title }}{% else %}{{ page.title }} · {{ site.title }}{% endif %}</title>
   <meta name="description" content="{{ page.desc || site.description }}">
   <link rel="stylesheet" href="{{ site.assets }}style.css">
+  {% if site.favicon %}<link rel="icon" href="{{ site.favicon }}">{% else %}<link rel="icon" href="{{ site.assets }}favicon.svg">{% endif %}
 </head>
 <body class="docs">
   <header class="site-header">

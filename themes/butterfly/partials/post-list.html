@@ -12,7 +12,7 @@
     </div>
   </div>
   <a class="card-cover" href="{{ post.url }}" tabindex="-1" aria-hidden="true">
-    {% if post.data.cover %}<img src="{{ post.data.cover }}" alt="" loading="lazy">{% else %}<span class="cover-fallback"></span>{% endif %}
+    {% if post.data.cover %}<img src="{{ post.data.cover }}" alt="" loading="lazy">{% else %}<img class="cover-default" src="{{ site.assets }}cover-default.svg" alt="" loading="lazy">{% endif %}
   </a>
 </article>{% else %}<p class="empty">还没有文章，运行 <code>xfm new 我的第一篇文章</code> 开始写作。</p>
 {% endfor %}
