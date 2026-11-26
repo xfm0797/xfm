@@ -247,8 +247,7 @@ func (a *App) newSite() {
 
 // ---------- 新建文章 ----------
 
-// newPost 在 content 下创建一篇带 front matter 的 Markdown 文章；
-// 子目录留空时直接写入 content/ 根目录。
+// newPost 在 content/<目录> 下创建一篇带 front matter 的 Markdown 文章。
 func (a *App) newPost() {
 	if a.root == "" {
 		a.setStatus("请先打开站点")
@@ -266,7 +265,8 @@ func (a *App) newPost() {
 	root := a.root
 
 	dirEntry := widget.NewEntry()
-	dirEntry.SetPlaceHolder("留空即 content 根目录")
+	dirEntry.SetText("posts")
+	dirEntry.SetPlaceHolder("posts")
 	titleEntry := widget.NewEntry()
 	titleEntry.SetPlaceHolder("文章标题")
 	slugEntry := widget.NewEntry()
@@ -277,7 +277,7 @@ func (a *App) newPost() {
 	draftCheck.SetChecked(true)
 
 	form := widget.NewForm(
-		widget.NewFormItem("子目录", dirEntry),
+		widget.NewFormItem("目录", dirEntry),
 		widget.NewFormItem("标题", titleEntry),
 		widget.NewFormItem("文件名", slugEntry),
 		widget.NewFormItem("标签", tagsEntry),
