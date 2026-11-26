@@ -74,6 +74,8 @@ xfm plugins my-blog    # 查看插件启用状态
 | Netlify | `NETLIFY_AUTH_TOKEN` | `NETLIFY_SITE_ID` |
 | Vercel | `VERCEL_TOKEN` | `VERCEL_TEAM_ID` |
 
+各平台 Token / Site ID 的申请步骤见 [发布凭据申请指南](docs/publish-credentials.md)。
+
 ```bash
 xfm publish my-blog --dry-run                  # 只校验配置与文件，不上传
 xfm publish my-blog                            # 发布到 publish.targets 里的全部平台
