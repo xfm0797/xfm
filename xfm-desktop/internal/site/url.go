@@ -1,6 +1,7 @@
 package site
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -148,7 +149,10 @@ func fromHex(c byte) int {
 	return -1
 }
 
-// ensureThemeDir 确保主题目录存在；缺失时回退到内嵌主题（写入 .xfm 缓存目录）。
+// ensureThemeDir 确保主题目录存在并返回其绝对路径。
+// 查找顺序：绝对路径 → site root 相对路径 → themes/<name> → 外部搜索路径链。
+// 如果是首次运行且只有 exe 旁/系统路径有主题，直接返回。
+// 找不到则返回错误（不再写内嵌主题）。
 func ensureThemeDir(root, themeName string) (string, error) {
 	if filepath.IsAbs(themeName) {
 		if dirExists(themeName) {
@@ -159,20 +163,20 @@ func ensureThemeDir(root, themeName string) (string, error) {
 	if dirExists(local) {
 		return local, nil
 	}
-	// 只给名字（如 "default"）时也尝试 themes/<name>
 	local2 := filepath.Join(root, "themes", themeName)
 	if dirExists(local2) {
 		return local2, nil
 	}
-	// 回退内嵌主题
-	name := path.Base(filepath.ToSlash(themeName))
-	cache := filepath.Join(root, ".xfm", "themes", name)
-	if !dirExists(cache) {
-		if err := assets.WriteEmbeddedTheme(cache, name); err != nil {
-			return "", err
-		}
+	// 外部搜索路径链
+	resolver := assets.NewThemeResolver(root)
+	name := filepath.Base(filepath.ToSlash(themeName))
+	if hit := resolver.Resolve(name); hit != "" {
+		return hit, nil
 	}
-	return cache, nil
+	return "", fmt.Errorf(
+		"主题 %q 未找到。请检查 site.theme 配置，或运行 `xfm install-themes` 安装官方主题。",
+		themeName,
+	)
 }
 
 func dirExists(p string) bool {

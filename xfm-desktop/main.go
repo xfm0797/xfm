@@ -1,4 +1,5 @@
-// xfm 桌面版：基于 Fyne 的静态博客工作台 + CLI 入口（纯 Go 重写内核）。
+// xfm 桌面版：基于 Fyne 的静态博客工作台 + CLI（纯 Go 重写内核）。
+// 主题/插件等资源从外部目录动态加载，不再嵌入二进制。
 package main
 
 import (
@@ -6,8 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	xsite "xfmdesk/internal/site"
+	"xfmdesk/assets"
 	"xfmdesk/internal/gui"
+	xsite "xfmdesk/internal/site"
 	"xfmdesk/internal/scaffold"
 )
 
@@ -24,37 +26,48 @@ func main() {
 
 func runCLI(args []string) error {
 	cmd := args[0]
+	rest := args[1:]
 	switch cmd {
 	case "build":
 		dir := "."
-		if len(args) > 1 {
-			dir = args[1]
+		if len(rest) > 0 {
+			dir = rest[0]
 		}
 		return cmdBuild(dir)
 	case "create", "new", "init":
-		if len(args) < 2 {
+		if len(rest) < 1 {
 			return fmt.Errorf("用法：xfm create <目录> [blog|docs]")
 		}
-		dir := args[1]
 		tpl := "blog"
-		if len(args) > 2 {
-			tpl = args[2]
+		if len(rest) > 1 {
+			tpl = rest[1]
 		}
-		return cmdCreate(dir, tpl)
+		return cmdCreate(rest[0], tpl)
 	case "serve", "dev":
 		dir := "."
-		if len(args) > 1 {
-			dir = args[1]
+		if len(rest) > 0 {
+			dir = rest[0]
 		}
 		return cmdServe(dir)
+	case "themes":
+		return cmdThemes(rest)
+	case "install-themes", "install":
+		var src, dest string
+		if len(rest) > 0 {
+			src = rest[0]
+		}
+		if len(rest) > 1 {
+			dest = rest[1]
+		}
+		return cmdInstallThemes(src, dest)
 	case "version", "-v", "--version":
-		fmt.Println("xfm 桌面版 · 纯 Go 重写内核")
+		fmt.Println("xfm 桌面版 · 纯 Go 重写内核（主题从外部目录加载）")
 		return nil
 	case "help", "-h", "--help":
 		printHelp()
 		return nil
 	default:
-		return fmt.Errorf("未知命令 %q，可用：build / create / serve", cmd)
+		return fmt.Errorf("未知命令 %q，可用：build / create / serve / themes / install-themes", cmd)
 	}
 }
 
@@ -109,14 +122,146 @@ func cmdServe(dir string) error {
 	select {}
 }
 
+func cmdThemes(_ []string) error {
+	resolver := assets.NewThemeResolver(".")
+	fmt.Println("=== 主题搜索路径 ===")
+	for i, p := range resolver.SearchPaths() {
+		st := "不存在"
+		if _, err := os.Stat(p.Dir); err == nil {
+			st = "存在"
+		}
+		w := "只读"
+		if p.Writable {
+			w = "可写"
+		}
+		s := ""
+		if p.Source {
+			s = " · source"
+		}
+		fmt.Printf("  %d. [%s] %s  %s %s%s\n", i+1, w, st, p.Dir, p.Label, s)
+	}
+	fmt.Println()
+	themes := resolver.ListDetailed()
+	if len(themes) == 0 {
+		fmt.Println("⚠  没有找到任何可用主题。请运行 `xfm install-themes` 安装官方主题。")
+		fmt.Println("   也可以设置环境变量 XFM_THEMES_DIR=/path/to/themes 指定主题目录。")
+		return nil
+	}
+	fmt.Printf("=== 可用主题 (%d) ===\n", len(themes))
+	for _, t := range themes {
+		fmt.Printf("  • %-12s  %s\n      ↳ 来自 %s\n", t.Name, t.Path, t.Source)
+	}
+	return nil
+}
+
+func cmdInstallThemes(src, dest string) error {
+	resolver := assets.NewThemeResolver(".")
+	destDir := dest
+	if destDir == "" {
+		d, err := resolver.WritablePath()
+		if err != nil {
+			return err
+		}
+		destDir = d
+	}
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		return err
+	}
+
+	if src == "" {
+		// 不带参数：把 exe 旁 source 路径里打包好的主题复制过来
+		installed, err := resolver.InstallFromResolver(destDir)
+		if err != nil {
+			return err
+		}
+		if len(installed) == 0 {
+			fmt.Println("⚠  没有可复制的内置主题。")
+			fmt.Println("   请用 `xfm install-themes <src>` 指定一个包含 default/、docs/ 等子目录的 themes/ 目录。")
+			return nil
+		}
+		fmt.Printf("✓ 已从 exe 旁 source 路径安装 %d 个主题到 %s：\n", len(installed), destDir)
+		for _, n := range installed {
+			fmt.Printf("  • %s\n", n)
+		}
+		return nil
+	}
+
+	// 带 src：判断它是单个主题还是主题集合目录
+	absSrc, err := filepath.Abs(src)
+	if err != nil {
+		return err
+	}
+	if !assets.DirExists(absSrc) {
+		return fmt.Errorf("源目录不存在：%s", absSrc)
+	}
+
+	// 集合目录：直接子目录里有主题布局
+	if entries, err := os.ReadDir(absSrc); err == nil {
+		var subThemes []string
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			sub := filepath.Join(absSrc, e.Name())
+			if assets.HasThemeLayout(sub) {
+				subThemes = append(subThemes, sub)
+			}
+		}
+		if len(subThemes) > 0 {
+			fmt.Printf("检测到主题集合目录，将安装 %d 个主题到 %s：\n", len(subThemes), destDir)
+			for _, t := range subThemes {
+				name := filepath.Base(t)
+				target := filepath.Join(destDir, name)
+				if assets.DirExists(target) {
+					fmt.Printf("  • %s  (已存在，跳过)\n", name)
+					continue
+				}
+				if err := assets.CopyTheme(t, destDir, name); err != nil {
+					return fmt.Errorf("复制 %s 失败：%w", name, err)
+				}
+				fmt.Printf("  ✓ %s\n", name)
+			}
+			return nil
+		}
+	}
+
+	// 单个主题
+	if !assets.HasThemeLayout(absSrc) {
+		return fmt.Errorf("%s 既不是主题目录也不是主题集合目录", absSrc)
+	}
+	name := filepath.Base(filepath.Clean(absSrc))
+	target := filepath.Join(destDir, name)
+	if assets.DirExists(target) {
+		return fmt.Errorf("目标已存在：%s（如需覆盖请先删除）", target)
+	}
+	if err := assets.CopyTheme(absSrc, destDir, name); err != nil {
+		return err
+	}
+	fmt.Printf("✓ 已安装主题 %s → %s\n", name, target)
+	return nil
+}
+
 func printHelp() {
-	fmt.Println(`xfm 桌面版 — 基于 Fyne 的静态博客工作台（纯 Go 重写）
+	fmt.Println(`xfm 桌面版 — 基于 Fyne 的静态博客工作台（纯 Go 重写，主题外部加载）
 
 用法：
-  xfm                  启动桌面 GUI
-  xfm build [目录]     构建站点（默认当前目录）
-  xfm create <目录> [模板]  新建站点脚手架（blog 或 docs，默认 blog）
-  xfm serve [目录]     构建并启动预览服务器（默认 http://127.0.0.1:4173）
-  xfm version          版本信息
-  xfm help             本帮助`)
+  xfm                         启动桌面 GUI
+  xfm build [目录]            构建站点（默认当前目录）
+  xfm create <目录> [模板]    新建站点脚手架（blog 或 docs，默认 blog）
+  xfm serve [目录]            构建并启动预览服务器（http://127.0.0.1:4173）
+  xfm themes                  列出所有可加载的主题及搜索路径
+  xfm install-themes [src] [dest]
+                              安装外部主题：
+                                不带参数 — 把可执行文件旁 themes/ 安装到用户缓存
+                                xfm install-themes ./themes
+                                xfm install-themes ./themes ~/my-themes
+  xfm version                 版本信息
+  xfm help                    本帮助
+
+主题搜索路径（优先级从高到低）：
+  1. 环境变量 XFM_THEMES_DIR
+  2. 可执行文件旁的 themes/（分发目录）
+  3. $XDG_DATA_HOME/xfm/themes 或 ~/.local/share/xfm/themes
+  4. ~/.xfm/themes
+  5. 站点自己的 themes/`)
 }

@@ -112,14 +112,103 @@ description: 第一篇文章。
 		}
 	}
 
-	// 内嵌主题
+	// 主题：从外部资源解析器找到后复制到站点 themes/
 	themeDir := filepath.Join(abs, "themes", theme)
-	if err := assets.WriteEmbeddedTheme(themeDir, theme); err != nil {
-		return err
+	resolver := assets.NewThemeResolver(abs)
+	src := resolver.Resolve(theme)
+	if src != "" {
+		if err := assets.CopyTheme(src, filepath.Join(abs, "themes"), theme); err != nil {
+			return fmt.Errorf("复制主题失败：%w", err)
+		}
+	} else {
+		// 找不到内置主题时，给站点写一份最小可用的 themes/<name>/ 骨架，
+		// 里面放 README 提示用户去 install-themes 或手工复制。
+		if err := writeThemeStub(themeDir, theme); err != nil {
+			return fmt.Errorf("创建主题骨架失败：%w", err)
+		}
 	}
 	_ = writeFile(abs, ".gitignore", "dist/\n.xfm/\nnode_modules/\n")
 	_ = writeFile(abs, "public/.gitkeep", "")
 	return nil
+}
+
+// writeThemeStub 在没有外部主题时写一份最小主题骨架到目标目录，
+// 包含必要的 base.html/layouts/index.html 让站点能构建，外加一个 README 提示。
+func writeThemeStub(dir, theme string) error {
+	if err := os.MkdirAll(filepath.Join(dir, "layouts"), 0o755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "partials"), 0o755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "assets"), 0o755); err != nil {
+		return err
+	}
+
+	// 最小 assets（让测试能过 + 站点能加载）
+	if err := writeFile(dir, "assets/style.css", "body{font-family:system-ui,sans-serif;margin:0;padding:2rem;}\n"); err != nil {
+		return err
+	}
+
+	baseHTML := `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}{{ site.title }}{% endblock %}</title>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  {% block main %}{% endblock %}
+</body>
+</html>
+`
+	indexHTML := `{% extend "base.html" %}
+{% block title %}{{ site.title }}{% endblock %}
+{% block main %}
+  <h1 class="home-title">{{ site.title }}</h1>
+  <section class="post-grid">
+  {% for p in posts %}
+    <a class="card" href="{{ p.url }}">
+      <h2>{{ p.title }}</h2>
+      <p>{{ p.desc }}</p>
+    </a>
+  {% endfor %}
+  </section>
+{% endblock %}
+`
+	pageHTML := `{% extend "base.html" %}
+{% block title %}{{ page.title }} - {{ site.title }}{% endblock %}
+{% block main %}
+  <article>
+    <h1>{{ page.title }}</h1>
+    <div>{{ content }}</div>
+  </article>
+{% endblock %}
+`
+	stubFiles := map[string]string{
+		"layouts/base.html":      baseHTML,
+		"layouts/index.html":     indexHTML,
+		"layouts/page.html":      pageHTML,
+		"layouts/post.html":      pageHTML,
+		"layouts/taxonomy.html":  pageHTML,
+		"layouts/categories.html": pageHTML,
+		"layouts/archives.html":  pageHTML,
+		"layouts/collection.html": pageHTML,
+	}
+	for rel, content := range stubFiles {
+		if err := writeFile(dir, rel, content); err != nil {
+			return err
+		}
+	}
+	// README 提示用户安装真实主题
+	readme := "# 主题占位：" + theme + "\n\n" +
+		"这是 xfm 自动生成的最小主题骨架（没有外部主题可用时的回退）。\n\n" +
+		"## 安装官方主题\n\n" +
+		"  xfm install-themes\n" +
+		"  # 或指定源目录：\n" +
+		"  xfm install-themes /path/to/xfm/themes\n\n" +
+		"安装后重新 scaffold，或直接把 themes/default 整体复制到本目录覆盖。\n"
+	return writeFile(dir, "README.md", readme)
 }
 
 func hasConfig(dir string) bool {
