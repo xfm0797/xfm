@@ -22,11 +22,8 @@ func publishNetlify(ctx context.Context, cfg *Config, opts Options, name string)
 	if opts.Log == nil {
 		opts.Log = func(string) {}
 	}
-	sec := cfg.Section(name)
-	siteID := strings.TrimSpace(str(sec["siteId"]))
-	if siteID == "" {
-		siteID = strings.TrimSpace(os.Getenv("NETLIFY_SITE_ID"))
-	}
+	settings := cfg.Settings()
+	siteID := settings.Netlify.SiteID
 	if siteID == "" {
 		return Result{}, errors.New("未配置 netlify.siteId（或环境变量 NETLIFY_SITE_ID）")
 	}
@@ -45,9 +42,9 @@ func publishNetlify(ctx context.Context, cfg *Config, opts Options, name string)
 		return res, nil
 	}
 
-	token := firstEnv("NETLIFY_AUTH_TOKEN", "NETLIFY_ACCESS_TOKEN")
+	token := settings.Netlify.Token
 	if token == "" {
-		return Result{}, errors.New("缺少环境变量 NETLIFY_AUTH_TOKEN")
+		return Result{}, errors.New("缺少 Netlify Auth Token：请设置 NETLIFY_AUTH_TOKEN 或在「发布设置」中填写")
 	}
 
 	tmp, err := os.CreateTemp("", "xfm-netlify-*.zip")

@@ -21,16 +21,10 @@ func publishVercel(ctx context.Context, cfg *Config, opts Options, name string) 
 	if opts.Log == nil {
 		opts.Log = func(string) {}
 	}
-	sec := cfg.Section(name)
-	project := strings.TrimSpace(str(sec["project"]))
-	if project == "" {
-		project = strings.TrimSpace(str(sec["name"]))
-	}
-	teamID := strings.TrimSpace(str(sec["teamId"]))
-	if teamID == "" {
-		teamID = strings.TrimSpace(os.Getenv("VERCEL_TEAM_ID"))
-	}
-	target := strings.TrimSpace(str(sec["target"]))
+	settings := cfg.Settings()
+	project := settings.Vercel.Project
+	teamID := settings.Vercel.TeamID
+	target := settings.Vercel.Target
 	if target == "" {
 		target = "production"
 	}
@@ -52,9 +46,9 @@ func publishVercel(ctx context.Context, cfg *Config, opts Options, name string) 
 		return res, nil
 	}
 
-	token := firstEnv("VERCEL_TOKEN", "VERCEL_ACCESS_TOKEN")
+	token := settings.Vercel.Token
 	if token == "" {
-		return Result{}, errors.New("缺少环境变量 VERCEL_TOKEN")
+		return Result{}, errors.New("缺少 Vercel Access Token：请设置 VERCEL_TOKEN 或在「发布设置」中填写")
 	}
 
 	type vFile struct {

@@ -65,18 +65,7 @@ func Run() {
 }
 
 func (a *App) buildUI() {
-	toolbar := widget.NewToolbar(
-		widget.NewToolbarAction(theme.FolderOpenIcon(), a.openSite),
-		widget.NewToolbarAction(theme.DocumentCreateIcon(), a.newSite),
-		widget.NewToolbarSeparator(),
-		widget.NewToolbarAction(theme.DocumentSaveIcon(), a.saveFile),
-		widget.NewToolbarAction(theme.ConfirmIcon(), a.buildSite),
-		widget.NewToolbarAction(theme.MediaPlayIcon(), a.previewBrowser),
-		widget.NewToolbarAction(theme.UploadIcon(), a.publishSite),
-		widget.NewToolbarSeparator(),
-		widget.NewToolbarAction(theme.ViewRefreshIcon(), a.refreshFiles),
-		widget.NewToolbarAction(theme.SettingsIcon(), a.managePlugins),
-	)
+	toolbar := a.buildToolbar()
 
 	a.list = widget.NewList(
 		func() int { return len(a.files) },
@@ -117,6 +106,29 @@ func (a *App) buildUI() {
 	body.SetOffset(0.2)
 
 	a.win.SetContent(container.NewBorder(toolbar, a.status, nil, nil, body))
+}
+
+// buildToolbar 用「图标 + 文字」的按钮，鼠标悬停不再是唯一线索；
+// 窗口变窄时整行可以横向滚动。
+func (a *App) buildToolbar() fyne.CanvasObject {
+	btn := func(label string, icon fyne.Resource, fn func()) fyne.CanvasObject {
+		b := widget.NewButtonWithIcon(label, icon, fn)
+		b.Importance = widget.LowImportance
+		return b
+	}
+	row := container.NewHBox(
+		btn("打开站点", theme.FolderOpenIcon(), a.openSite),
+		btn("新建文章", theme.DocumentCreateIcon(), a.newPost),
+		btn("新建站点", theme.FolderNewIcon(), a.newSite),
+		btn("保存", theme.DocumentSaveIcon(), a.saveFile),
+		btn("构建", theme.ConfirmIcon(), a.buildSite),
+		btn("预览", theme.MediaPlayIcon(), a.previewBrowser),
+		btn("发布", theme.UploadIcon(), a.publishSite),
+		btn("发布设置", theme.AccountIcon(), a.editPublishSettings),
+		btn("刷新", theme.ViewRefreshIcon(), a.refreshFiles),
+		btn("插件", theme.SettingsIcon(), a.managePlugins),
+	)
+	return container.NewHScroll(row)
 }
 
 // ---------- 站点 ----------
@@ -224,6 +236,140 @@ func (a *App) newSite() {
 			})
 		}()
 	}, a.win)
+}
+
+// ---------- 新建文章 ----------
+
+// newPost 在 content/<目录> 下创建一篇带 front matter 的 Markdown 文章。
+func (a *App) newPost() {
+	if a.root == "" {
+		a.setStatus("请先打开站点")
+		return
+	}
+	cfg, err := xsite.LoadConfig(a.root)
+	if err != nil {
+		dialog.ShowError(err, a.win)
+		return
+	}
+	contentDir := cfg.Str("contentDir")
+	if contentDir == "" {
+		contentDir = "content"
+	}
+	root := a.root
+
+	dirEntry := widget.NewEntry()
+	dirEntry.SetText("posts")
+	dirEntry.SetPlaceHolder("posts")
+	titleEntry := widget.NewEntry()
+	titleEntry.SetPlaceHolder("文章标题")
+	slugEntry := widget.NewEntry()
+	slugEntry.SetPlaceHolder("留空则按标题生成")
+	tagsEntry := widget.NewEntry()
+	tagsEntry.SetPlaceHolder("用逗号分隔，可留空")
+	draftCheck := widget.NewCheck("存为草稿（draft: true）", nil)
+	draftCheck.SetChecked(true)
+
+	form := widget.NewForm(
+		widget.NewFormItem("目录", dirEntry),
+		widget.NewFormItem("标题", titleEntry),
+		widget.NewFormItem("文件名", slugEntry),
+		widget.NewFormItem("标签", tagsEntry),
+		widget.NewFormItem("", draftCheck),
+	)
+	dialog.ShowCustomConfirm("新建文章", "创建", "取消", form, func(ok bool) {
+		if !ok {
+			return
+		}
+		title := strings.TrimSpace(titleEntry.Text)
+		if title == "" {
+			dialog.ShowError(fmt.Errorf("标题不能为空"), a.win)
+			return
+		}
+		slug := slugify(slugEntry.Text)
+		if slug == "" {
+			slug = slugify(title)
+		}
+		if slug == "" {
+			slug = time.Now().Format("20060102-150405")
+		}
+		relDir := contentDir
+		if sub := strings.Trim(strings.TrimSpace(dirEntry.Text), "/"); sub != "" {
+			relDir = filepath.ToSlash(filepath.Join(contentDir, sub))
+		}
+		dirAbs := filepath.Join(root, filepath.FromSlash(relDir))
+		if err := os.MkdirAll(dirAbs, 0o755); err != nil {
+			dialog.ShowError(err, a.win)
+			return
+		}
+		abs := filepath.Join(dirAbs, uniquePostName(dirAbs, slug))
+		doc := buildPostDocument(title, tagsEntry.Text, draftCheck.Checked)
+		if err := os.WriteFile(abs, []byte(doc), 0o644); err != nil {
+			dialog.ShowError(err, a.win)
+			return
+		}
+		a.refreshFiles()
+		rel, _ := filepath.Rel(root, abs)
+		rel = filepath.ToSlash(rel)
+		a.openFile(rel)
+		a.setStatus("已创建：" + rel)
+	}, a.win)
+}
+
+func uniquePostName(dir, slug string) string {
+	name := slug + ".md"
+	for i := 2; i < 1000; i++ {
+		if _, err := os.Stat(filepath.Join(dir, name)); os.IsNotExist(err) {
+			return name
+		}
+		name = fmt.Sprintf("%s-%d.md", slug, i)
+	}
+	return fmt.Sprintf("%s-%d.md", slug, time.Now().Unix())
+}
+
+// slugify 保留数字、英文字母与中文，空白和连接符转为单个短横线。
+func slugify(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var b strings.Builder
+	dash := false
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			dash = false
+		case r > 127:
+			b.WriteRune(r)
+			dash = false
+		case r == ' ' || r == '-' || r == '_':
+			if !dash && b.Len() > 0 {
+				b.WriteByte('-')
+				dash = true
+			}
+		}
+	}
+	return strings.Trim(b.String(), "-")
+}
+
+func buildPostDocument(title, tags string, draft bool) string {
+	var b strings.Builder
+	b.WriteString("---\n")
+	fmt.Fprintf(&b, "title: %q\n", title)
+	b.WriteString("date: " + time.Now().Format("2006-01-02 15:04") + "\n")
+	var list []string
+	for _, t := range strings.FieldsFunc(tags, func(r rune) bool { return r == ',' || r == '，' }) {
+		t = strings.Trim(strings.TrimSpace(t), "[]")
+		if t != "" {
+			list = append(list, t)
+		}
+	}
+	if len(list) > 0 {
+		b.WriteString("tags: [" + strings.Join(list, ", ") + "]\n")
+	}
+	if draft {
+		b.WriteString("draft: true\n")
+	}
+	b.WriteString("---\n\n")
+	b.WriteString("# " + title + "\n\n")
+	return b.String()
 }
 
 // ---------- 构建 / 预览 ----------
@@ -391,7 +537,7 @@ func (a *App) publishSite() {
 	// 面板总是列出全部平台，配置文件里的 publish.targets 作为默认勾选
 	names := publish.All()
 	checks := make([]*widget.Check, len(names))
-	box := container.NewVBox(widget.NewLabel("选择要发布的平台（凭据从环境变量读取）："))
+	box := container.NewVBox(widget.NewLabel("选择要发布的平台（凭据可在「发布设置」中填写，环境变量优先）："))
 	for i, name := range names {
 		c := widget.NewCheck(publishLabel(name), nil)
 		c.SetChecked(containsStr(cfg.Targets, name))
@@ -441,6 +587,125 @@ func (a *App) publishSite() {
 	}, a.win)
 	d.Resize(fyne.NewSize(380, 300))
 	d.Show()
+}
+
+// editPublishSettings 配置各平台凭据：Token 存本机，其余字段按站点保存。
+func (a *App) editPublishSettings() {
+	if a.root == "" {
+		a.setStatus("请先打开站点")
+		return
+	}
+	cfg, err := publish.Load(a.root)
+	if err != nil {
+		dialog.ShowError(err, a.win)
+		return
+	}
+	s := cfg.Settings()
+	root := a.root
+
+	ghRepo := settingEntry(s.GitHub.Repo, "owner/repo")
+	ghBranch := settingEntry(s.GitHub.Branch, "gh-pages")
+	ghToken := secretEntry(s.GitHub.Token)
+
+	cfAccount := settingEntry(s.Cloudflare.AccountID, "Account ID")
+	cfProject := settingEntry(s.Cloudflare.Project, "项目名")
+	cfBranch := settingEntry(s.Cloudflare.Branch, "main")
+	cfToken := secretEntry(s.Cloudflare.Token)
+
+	nfSite := settingEntry(s.Netlify.SiteID, "Site ID")
+	nfToken := secretEntry(s.Netlify.Token)
+
+	vcProject := settingEntry(s.Vercel.Project, "项目名")
+	vcTeam := settingEntry(s.Vercel.TeamID, "Team ID（可选）")
+	vcToken := secretEntry(s.Vercel.Token)
+
+	hint := widget.NewLabel("Token 保存在用户配置目录（权限 0600），不写入站点；站点配置与环境变量优先级更高。")
+	hint.Wrapping = fyne.TextWrapWord
+
+	form := container.NewVBox(
+		settingTitle("GitHub Pages"),
+		widget.NewForm(
+			widget.NewFormItem("仓库", ghRepo),
+			widget.NewFormItem("分支", ghBranch),
+			widget.NewFormItem("Token", ghToken),
+		),
+		widget.NewSeparator(),
+		settingTitle("Cloudflare Pages"),
+		widget.NewForm(
+			widget.NewFormItem("Account ID", cfAccount),
+			widget.NewFormItem("项目", cfProject),
+			widget.NewFormItem("分支", cfBranch),
+			widget.NewFormItem("Token", cfToken),
+		),
+		widget.NewSeparator(),
+		settingTitle("Netlify"),
+		widget.NewForm(
+			widget.NewFormItem("Site ID", nfSite),
+			widget.NewFormItem("Token", nfToken),
+		),
+		widget.NewSeparator(),
+		settingTitle("Vercel"),
+		widget.NewForm(
+			widget.NewFormItem("项目", vcProject),
+			widget.NewFormItem("Team ID", vcTeam),
+			widget.NewFormItem("Token", vcToken),
+		),
+		widget.NewSeparator(),
+		hint,
+	)
+	content := container.NewVScroll(form)
+	content.SetMinSize(fyne.NewSize(520, 560))
+	d := dialog.NewCustomConfirm("发布设置", "保存", "取消", content, func(ok bool) {
+		if !ok {
+			return
+		}
+		out := publish.Settings{
+			GitHub: publish.GitHubSettings{
+				Repo:   ghRepo.Text,
+				Branch: ghBranch.Text,
+				Token:  ghToken.Text,
+			},
+			Cloudflare: publish.CloudflareSettings{
+				AccountID: cfAccount.Text,
+				Project:   cfProject.Text,
+				Branch:    cfBranch.Text,
+				Token:     cfToken.Text,
+			},
+			Netlify: publish.NetlifySettings{
+				SiteID: nfSite.Text,
+				Token:  nfToken.Text,
+			},
+			Vercel: publish.VercelSettings{
+				Project: vcProject.Text,
+				TeamID:  vcTeam.Text,
+				Token:   vcToken.Text,
+			},
+		}
+		if err := publish.SaveSettings(root, out); err != nil {
+			dialog.ShowError(err, a.win)
+			return
+		}
+		a.setStatus("发布设置已保存（Token 存于本机配置目录）")
+	}, a.win)
+	d.Resize(fyne.NewSize(560, 660))
+	d.Show()
+}
+
+func settingEntry(value, placeholder string) *widget.Entry {
+	e := widget.NewEntry()
+	e.SetText(value)
+	e.SetPlaceHolder(placeholder)
+	return e
+}
+
+func secretEntry(value string) *widget.Entry {
+	e := widget.NewPasswordEntry()
+	e.SetText(value)
+	return e
+}
+
+func settingTitle(text string) fyne.CanvasObject {
+	return widget.NewLabelWithStyle(text, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 }
 
 func (a *App) showPublishResults(outcomes []publish.Outcome) {

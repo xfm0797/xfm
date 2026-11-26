@@ -14,6 +14,18 @@ import (
 	"testing"
 )
 
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "xfm-publish-test-*")
+	if err == nil {
+		_ = os.Setenv("XDG_CONFIG_HOME", dir)
+	}
+	code := m.Run()
+	if err == nil {
+		_ = os.RemoveAll(dir)
+	}
+	os.Exit(code)
+}
+
 func makeDist(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -280,5 +292,74 @@ func TestRunUnknownTarget(t *testing.T) {
 	})
 	if len(out) != 1 || out[0].Err == nil {
 		t.Fatalf("outcomes = %+v", out)
+	}
+}
+
+func TestSettingsSaveAndLoad(t *testing.T) {
+	for _, k := range []string{
+		"GITHUB_TOKEN", "GH_TOKEN", "GITHUB_REPO",
+		"CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID",
+		"NETLIFY_AUTH_TOKEN", "NETLIFY_SITE_ID",
+		"VERCEL_TOKEN", "VERCEL_TEAM_ID",
+	} {
+		t.Setenv(k, "")
+	}
+	root := t.TempDir()
+	in := Settings{
+		GitHub: GitHubSettings{Repo: "me/blog", Branch: "pages", Token: "ghp_xxx"},
+		Cloudflare: CloudflareSettings{
+			AccountID: "acc", Project: "blog", Branch: "main", Token: "cf_xxx",
+		},
+		Netlify: NetlifySettings{SiteID: "site1", Token: "nf_xxx"},
+		Vercel:  VercelSettings{Project: "blog", TeamID: "team1", Token: "vc_xxx"},
+	}
+	if err := SaveSettings(root, in); err != nil {
+		t.Fatal(err)
+	}
+	got := (&Config{Root: root, Raw: map[string]any{}}).Settings()
+	if got.GitHub.Repo != "me/blog" || got.GitHub.Branch != "pages" || got.GitHub.Token != "ghp_xxx" {
+		t.Errorf("github = %+v", got.GitHub)
+	}
+	if got.Cloudflare.AccountID != "acc" || got.Cloudflare.Token != "cf_xxx" {
+		t.Errorf("cloudflare = %+v", got.Cloudflare)
+	}
+	if got.Netlify.SiteID != "site1" || got.Vercel.TeamID != "team1" {
+		t.Errorf("netlify/vercel = %+v / %+v", got.Netlify, got.Vercel)
+	}
+
+	// 站点字段按目录隔离，Token 全局可用
+	other := (&Config{Root: t.TempDir(), Raw: map[string]any{}}).Settings()
+	if other.GitHub.Repo != "" {
+		t.Errorf("repo should be site-scoped, got %q", other.GitHub.Repo)
+	}
+	if other.GitHub.Token != "ghp_xxx" {
+		t.Errorf("token should be global, got %q", other.GitHub.Token)
+	}
+
+	p, err := StorePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("store perm = %o, want 600", perm)
+	}
+}
+
+func TestSettingsEnvWinsOverStore(t *testing.T) {
+	root := t.TempDir()
+	if err := SaveSettings(root, Settings{
+		Netlify: NetlifySettings{SiteID: "stored-site", Token: "stored-token"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NETLIFY_SITE_ID", "env-site")
+	t.Setenv("NETLIFY_AUTH_TOKEN", "env-token")
+	s := (&Config{Root: root, Raw: map[string]any{}}).Settings()
+	if s.Netlify.SiteID != "env-site" || s.Netlify.Token != "env-token" {
+		t.Errorf("netlify = %+v", s.Netlify)
 	}
 }

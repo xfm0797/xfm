@@ -1,6 +1,18 @@
 # 发布凭据申请指南
 
-本文说明如何为 `xfm publish` 支持的四个平台申请凭据。**所有 Token 都通过环境变量传入，不要写进 `xfm.config.json`，也不要提交到仓库。**
+本文说明如何为 `xfm publish` 支持的四个平台申请凭据。凭据有两种填写方式：
+
+1. **图形界面**：工具栏「发布设置」逐项填写，Token 与站点参数保存在本机用户配置目录（权限 `0600`），不写入站点；
+2. **环境变量**：适合 CI 或临时使用。
+
+优先级为 **站点配置 > 环境变量 > 本机保存**。**不要把 Token 写进 `xfm.config.json` 或提交到仓库。**
+
+图形界面保存的 Token 位于：
+
+- Linux/macOS：`~/.config/xfm/publish.json`
+- Windows：`%AppData%\xfm\publish.json`
+
+其中 Token 全局生效，仓库 / 项目 / Site ID 等非敏感字段按站点目录分别保存。
 
 ## 总览
 

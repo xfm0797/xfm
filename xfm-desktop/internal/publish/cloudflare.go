@@ -21,13 +21,10 @@ func publishCloudflare(ctx context.Context, cfg *Config, opts Options, name stri
 	if opts.Log == nil {
 		opts.Log = func(string) {}
 	}
-	sec := cfg.Section(name)
-	project := strings.TrimSpace(str(sec["project"]))
-	account := strings.TrimSpace(str(sec["accountId"]))
-	if account == "" {
-		account = strings.TrimSpace(os.Getenv("CLOUDFLARE_ACCOUNT_ID"))
-	}
-	branch := strings.TrimSpace(str(sec["branch"]))
+	settings := cfg.Settings()
+	project := settings.Cloudflare.Project
+	account := settings.Cloudflare.AccountID
+	branch := settings.Cloudflare.Branch
 	if branch == "" {
 		branch = "main"
 	}
@@ -52,9 +49,9 @@ func publishCloudflare(ctx context.Context, cfg *Config, opts Options, name stri
 		return res, nil
 	}
 
-	token := firstEnv("CLOUDFLARE_API_TOKEN", "CF_API_TOKEN")
+	token := settings.Cloudflare.Token
 	if token == "" {
-		return Result{}, errors.New("缺少环境变量 CLOUDFLARE_API_TOKEN")
+		return Result{}, errors.New("缺少 Cloudflare API Token：请设置 CLOUDFLARE_API_TOKEN 或在「发布设置」中填写")
 	}
 
 	manifest, byHash, err := hashDist(files)

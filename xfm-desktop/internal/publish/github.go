@@ -12,24 +12,22 @@ import (
 )
 
 // publishGitHub 把 dist 作为一次提交强制推送到 gh-pages 分支。
-// 凭据优先级：GITHUB_TOKEN / GH_TOKEN > 本机 git 凭据（credential helper / SSH）。
+// 凭据优先级：环境变量 > 「发布设置」保存的 Token > 本机 git 凭据。
 func publishGitHub(ctx context.Context, cfg *Config, opts Options, name string) (Result, error) {
 	if opts.Log == nil {
 		opts.Log = func(string) {}
 	}
 	sec := cfg.Section(name)
+	settings := cfg.Settings()
 
-	repo := strings.TrimSpace(str(sec["repo"]))
-	if repo == "" {
-		repo = strings.TrimSpace(os.Getenv("GITHUB_REPO"))
-	}
+	repo := settings.GitHub.Repo
 	if repo == "" {
 		repo = detectGitHubRepo(ctx, opts.Root)
 	}
 	if repo == "" {
 		return Result{}, errors.New("未配置 github.repo，且无法从 git remote 推断仓库（格式：owner/name）")
 	}
-	branch := strings.TrimSpace(str(sec["branch"]))
+	branch := settings.GitHub.Branch
 	if branch == "" {
 		branch = "gh-pages"
 	}
@@ -55,7 +53,7 @@ func publishGitHub(ctx context.Context, cfg *Config, opts Options, name string) 
 		return res, nil
 	}
 
-	token := firstEnv("GITHUB_TOKEN", "GH_TOKEN")
+	token := settings.GitHub.Token
 	tmp, err := os.MkdirTemp("", "xfm-pages-*")
 	if err != nil {
 		return Result{}, err
