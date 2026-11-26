@@ -58,9 +58,9 @@ xfm plugins my-blog    # 查看插件启用状态
 
 ## 新建文章
 
-工具栏「新建文章」→ 填写标题、目录（默认 `posts`）、可选文件名与标签 → 创建后自动打开编辑器。
+工具栏「新建文章」→ 填写标题、可选子目录（留空直接放在 `content/` 下）、可选文件名与标签 → 创建后自动打开编辑器。
 
-- 文件路径：`content/<目录>/<slug>.md`，同名时自动追加 `-2`、`-3`
+- 文件路径：`content/<子目录>/<slug>.md`，子目录留空即 `content/<slug>.md`；同名时自动追加 `-2`、`-3`
 - 标题中的空白转为短横线，保留英文、数字与中文
 - 默认勾选「存为草稿」，即写入 `draft: true`，取消勾选则直接发布
 
@@ -181,7 +181,7 @@ convert internal/gui/assets/icon.png -define icon:auto-resize=256,128,64,48,32,1
 推送 `desktop-v*`（或 `v*`）标签会触发 [Desktop Release](../.github/workflows/desktop-release.yml)：在 Linux / macOS（arm64 + amd64）/ Windows 上编译，并把四个平台包附加到 GitHub Release。
 
 ```bash
-git tag desktop-v0.1.2 && git push origin desktop-v0.1.2
+git tag desktop-v0.1.3 && git push origin desktop-v0.1.3
 ```
 
 用 `desktop-` 前缀可以避免与 Node 版 xfm 的 `v*` 标签冲突。
