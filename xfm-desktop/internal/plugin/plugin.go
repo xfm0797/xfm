@@ -10,7 +10,8 @@
 //	finish(site)            收尾
 //
 // 插件来源：
-//  1. 内置 Go 注册表（编译进二进制），通过在 config.plugins 里写名字启用；
+//  1. 内置 Go 注册表（编译进二进制）。核心插件 rss/sitemap/search/seo/minify
+//     默认启用；其余插件在 config.plugins 里写名字后启用（也可显式写空数组全部关闭）；
 //  2. 站点 plugins/ 目录下的声明式清单 <name>.json：
 //     {"name":"rss","enabled":true,"config":{"limit":10}}
 //     既能启用未写进配置的插件，也能在不改动配置文件的情况下关闭插件。
@@ -117,6 +118,23 @@ type Instance struct {
 type Factory func(h Host) *Instance
 
 var registry = map[string]Factory{}
+
+// corePlugins 是默认启用的核心插件（顺序即默认加载顺序）。
+// 其余内置插件默认关闭，可按需在 config.plugins 或 plugins/<name>.json 中启用。
+var corePlugins = []string{"rss", "sitemap", "search", "seo", "minify"}
+
+// Core 返回核心插件名（按默认加载顺序）。
+func Core() []string { return append([]string(nil), corePlugins...) }
+
+// IsCore 判断是否属于核心插件。
+func IsCore(name string) bool {
+	for _, n := range corePlugins {
+		if n == name {
+			return true
+		}
+	}
+	return false
+}
 
 // Register 注册一个内置插件（通常在 init 中调用）。
 func Register(name string, f Factory) {

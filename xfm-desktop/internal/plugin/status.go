@@ -13,6 +13,7 @@ import (
 type StatusEntry struct {
 	Name        string
 	Enabled     bool
+	Core        bool // 核心插件：默认启用
 	HasManifest bool
 }
 
@@ -62,7 +63,7 @@ func Status(root string, cfg map[string]any) []StatusEntry {
 	}
 	out := make([]StatusEntry, 0, len(registry))
 	for _, n := range Builtins() {
-		out = append(out, StatusEntry{Name: n, Enabled: state[n], HasManifest: hasManifest[n]})
+		out = append(out, StatusEntry{Name: n, Enabled: state[n], Core: IsCore(n), HasManifest: hasManifest[n]})
 	}
 	return out
 }

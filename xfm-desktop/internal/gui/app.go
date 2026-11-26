@@ -326,7 +326,11 @@ func (a *App) managePlugins() {
 	checks := make([]*widget.Check, len(entries))
 	box := container.NewVBox()
 	for i, e := range entries {
-		c := widget.NewCheck(e.Name, nil)
+		label := e.Name
+		if e.Core {
+			label += "（核心）"
+		}
+		c := widget.NewCheck(label, nil)
 		c.SetChecked(e.Enabled)
 		checks[i] = c
 		box.Add(c)

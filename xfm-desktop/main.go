@@ -177,13 +177,17 @@ func cmdPlugins(args []string) error {
 			state = "启用"
 		}
 		extra := ""
+		if e.Core {
+			extra += "  [核心]"
+		}
 		if e.HasManifest {
-			extra = "  [清单]"
+			extra += "  [清单]"
 		}
 		fmt.Printf("  %s %-14s %s%s\n", mark, e.Name, state, extra)
 	}
 	fmt.Println("\n用法：xfm plugins <站点目录> enable|disable <插件名>")
-	fmt.Println("说明：也可在 xfm.config.json 的 plugins 数组里启用；plugins/<name>.json 优先。")
+	fmt.Println("说明：核心插件（rss/sitemap/search/seo/minify）默认启用；其余默认关闭。")
+	fmt.Println("      也可在 xfm.config.json 的 plugins 数组里启用；plugins/<name>.json 优先。")
 	return nil
 }
 

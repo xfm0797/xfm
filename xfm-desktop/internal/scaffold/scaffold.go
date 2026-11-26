@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"xfmdesk/assets"
+	"xfmdesk/internal/plugin"
 )
 
 // CreateOptions 新建站点参数。
@@ -68,6 +69,7 @@ func Create(opt CreateOptions) error {
 			"nav":         nav,
 		},
 		"theme":      "themes/" + theme,
+		"plugins":    plugin.Core(),
 		"pagination": map[string]any{"perPage": 9},
 		"defaults":   map[string]any{"layout": layout},
 		"server":     map[string]any{"port": 4173},
@@ -186,13 +188,13 @@ func writeThemeStub(dir, theme string) error {
 {% endblock %}
 `
 	stubFiles := map[string]string{
-		"layouts/base.html":      baseHTML,
-		"layouts/index.html":     indexHTML,
-		"layouts/page.html":      pageHTML,
-		"layouts/post.html":      pageHTML,
-		"layouts/taxonomy.html":  pageHTML,
+		"layouts/base.html":       baseHTML,
+		"layouts/index.html":      indexHTML,
+		"layouts/page.html":       pageHTML,
+		"layouts/post.html":       pageHTML,
+		"layouts/taxonomy.html":   pageHTML,
 		"layouts/categories.html": pageHTML,
-		"layouts/archives.html":  pageHTML,
+		"layouts/archives.html":   pageHTML,
 		"layouts/collection.html": pageHTML,
 	}
 	for rel, content := range stubFiles {

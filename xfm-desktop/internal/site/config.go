@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"xfmdesk/internal/plugin"
 )
 
 // Defaults 与 xfm 的默认配置一致。
@@ -27,7 +29,7 @@ func Defaults() map[string]any {
 		"dataDir":         "data",
 		"collections":     map[string]any{},
 		"theme":           "themes/default",
-		"plugins":         []any{},
+		"plugins":         defaultPlugins(),
 		"defaults":        map[string]any{"layout": "page.html"},
 		"buildDrafts":     false,
 		"buildScheduled":  false,
@@ -44,6 +46,16 @@ func Defaults() map[string]any {
 		"server":     map[string]any{"port": 4173, "host": "127.0.0.1", "open": false},
 		"markdown":   map[string]any{"highlight": true},
 	}
+}
+
+// defaultPlugins 返回默认启用的核心插件（rss/sitemap/search/seo/minify）。
+func defaultPlugins() []any {
+	core := plugin.Core()
+	out := make([]any, len(core))
+	for i, n := range core {
+		out[i] = n
+	}
+	return out
 }
 
 var configFiles = []string{"xfm.config.json", "xfm.config.mjs", "xfm.config.js", "xfm.config.cjs", "config.js"}
