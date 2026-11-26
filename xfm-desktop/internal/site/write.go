@@ -56,6 +56,16 @@ func (s *Site) writeOutput() error {
 		}
 		s.Stats.Assets++
 	}
+	// 插件附加产物（sitemap.xml / feed.xml / search.json …）
+	for _, f := range s.extraFiles {
+		target := filepath.Join(outDir, filepath.FromSlash(f.Path))
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(target, f.Contents, 0o644); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

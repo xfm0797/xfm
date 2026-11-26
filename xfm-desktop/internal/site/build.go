@@ -11,6 +11,7 @@ import (
 
 	"xfmdesk/internal/frontmatter"
 	"xfmdesk/internal/markdown"
+	"xfmdesk/internal/plugin"
 	"xfmdesk/internal/tmpl"
 )
 
@@ -40,6 +41,12 @@ type Site struct {
 
 	contentAssets []assetCopy
 	Stats         Stats
+
+	Plugins       *plugin.Manager
+	pluginHelpers plugin.Helpers
+	documents     []*plugin.Doc
+	extraFiles    []plugin.ExtraFile
+	pluginErr     error
 
 	linkResolver           func(href string, page *Page) string
 	collectionPostsEnabled map[string]bool
@@ -80,15 +87,24 @@ func BuildSite(root, mode string) (*Site, error) {
 	if err := s.init(); err != nil {
 		return nil, err
 	}
+	s.Plugins = plugin.NewManager(&pluginHost{s: s})
+	if err := s.Plugins.Load(); err != nil {
+		return nil, err
+	}
 	if err := s.collect(); err != nil {
 		return nil, err
 	}
 	if err := s.renderAll(); err != nil {
 		return nil, err
 	}
+	s.collectExtras()
+	if s.pluginErr != nil {
+		return nil, s.pluginErr
+	}
 	if err := s.writeOutput(); err != nil {
 		return nil, err
 	}
+	s.Plugins.Finish()
 	return s, nil
 }
 
@@ -100,6 +116,15 @@ func (s *Site) init() error {
 	}
 	s.ThemeDir = dir
 	s.Engine = tmpl.NewEngine(dir)
+	s.pluginHelpers = plugin.Helpers{
+		NormalizeBase: NormalizeBase,
+		WithBase:      WithBase,
+		AbsoluteURL:   plugin.AbsoluteURL,
+		ApplyBase:     ApplyBase,
+		PlainText:     plainText,
+		MarkdownPlain: markdownPlain,
+		EscapeHTML:    markdown.EscapeHTML,
+	}
 	return nil
 }
 
@@ -301,6 +326,10 @@ func (s *Site) collect() error {
 	s.linkNeighbors()
 	s.aggregate()
 	s.buildSiteContext(siteData)
+	// extendContext：插件向站点上下文注入全局数据（如搜索入口、阅读统计）
+	if s.Plugins != nil {
+		s.SiteContext = s.Plugins.ExtendContext(s.SiteContext)
+	}
 
 	// 生成页
 	all := append([]*Page{}, pages...)
@@ -310,6 +339,10 @@ func (s *Site) collect() error {
 	all = append(all, s.collectionPages()...)
 	all = append(all, s.langIndexPages()...)
 	s.AllPages = all
+	// afterCollect：全部页面就位后、渲染前，插件可往 page.data 写跨页数据
+	if s.Plugins != nil {
+		s.Plugins.AfterCollect()
+	}
 	return nil
 }
 
@@ -640,6 +673,10 @@ func (s *Site) langHomes() []any {
 func (s *Site) renderAll() error {
 	resolver := s.linkResolver
 	for _, p := range s.AllPages {
+		src := p.Body
+		if s.Plugins != nil {
+			src = s.Plugins.Markdown(src, s.docFor(p))
+		}
 		bodyHTML := ""
 		if p.IsMD {
 			var hs []markdown.Heading
@@ -650,14 +687,14 @@ func (s *Site) renderAll() error {
 			if resolver != nil {
 				opts.Link = func(href string) string { return resolver(href, p) }
 			}
-			bodyHTML = markdown.Render(p.Body, opts)
+			bodyHTML = markdown.Render(src, opts)
 			for _, h := range hs {
 				if h.Level >= 2 && h.Level <= 3 {
 					p.TocData = append(p.TocData, h)
 				}
 			}
 		} else {
-			bodyHTML = p.Body
+			bodyHTML = src
 		}
 		p.BodyHTML = bodyHTML
 		view := s.serializePage(p)
@@ -667,6 +704,10 @@ func (s *Site) renderAll() error {
 			return fmt.Errorf("渲染 %s（布局 %s）失败：%w", p.Rel, p.Layout, err)
 		}
 		html = ApplyBase(html, toString(s.Cfg.Section("site")["base"]))
+		// transformHtml：在 ApplyBase 之后、写盘之前
+		if s.Plugins != nil {
+			html = s.Plugins.TransformHTML(html, s.docFor(p))
+		}
 		p.HTML = html
 	}
 	s.Stats.Pages = len(s.AllPages)

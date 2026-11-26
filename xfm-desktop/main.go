@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"xfmdesk/assets"
 	"xfmdesk/internal/gui"
-	xsite "xfmdesk/internal/site"
+	"xfmdesk/internal/plugin"
 	"xfmdesk/internal/scaffold"
+	xsite "xfmdesk/internal/site"
 )
 
 func main() {
@@ -51,6 +53,8 @@ func runCLI(args []string) error {
 		return cmdServe(dir)
 	case "themes":
 		return cmdThemes(rest)
+	case "plugins":
+		return cmdPlugins(rest)
 	case "install-themes", "install":
 		var src, dest string
 		if len(rest) > 0 {
@@ -84,6 +88,14 @@ func cmdBuild(dir string) error {
 	fmt.Printf("  ✓ 页面      %d 个\n", s.Stats.Pages)
 	fmt.Printf("  ✓ 静态资源  %d 个\n", s.Stats.Assets)
 	fmt.Printf("  ✓ 输出文件  %d 个\n", s.Stats.Written)
+	if s.Plugins != nil {
+		if names := s.Plugins.Names(); len(names) > 0 {
+			fmt.Printf("  ✓ 插件      %d 个（%s）\n", len(names), strings.Join(names, ", "))
+		}
+		for _, w := range s.Plugins.Warnings() {
+			fmt.Println("  ⚠ " + w)
+		}
+	}
 	fmt.Println()
 	return nil
 }
@@ -120,6 +132,59 @@ func cmdServe(dir string) error {
 	fmt.Println("  Ctrl+C 停止")
 	defer srv.Close()
 	select {}
+}
+
+func cmdPlugins(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("用法：xfm plugins <站点目录> [enable|disable <插件名>]")
+	}
+	dir, err := filepath.Abs(args[0])
+	if err != nil {
+		return err
+	}
+	if len(args) >= 3 {
+		name := args[2]
+		var enabled bool
+		switch args[1] {
+		case "enable", "on", "启用":
+			enabled = true
+		case "disable", "off", "关闭":
+			enabled = false
+		default:
+			return fmt.Errorf("未知操作 %q（可用：enable / disable）", args[1])
+		}
+		if err := plugin.SetEnabled(dir, name, enabled); err != nil {
+			return err
+		}
+		state := "关闭"
+		if enabled {
+			state = "启用"
+		}
+		fmt.Printf("✓ 已%s插件 %s（写入 plugins/%s.json）\n", state, name, name)
+	}
+
+	cfg, err := xsite.LoadConfig(dir)
+	if err != nil {
+		return err
+	}
+	entries := plugin.Status(dir, cfg.Raw)
+	fmt.Printf("⚡ 插件  %s\n\n", dir)
+	for _, e := range entries {
+		mark := "○"
+		state := "关闭"
+		if e.Enabled {
+			mark = "●"
+			state = "启用"
+		}
+		extra := ""
+		if e.HasManifest {
+			extra = "  [清单]"
+		}
+		fmt.Printf("  %s %-14s %s%s\n", mark, e.Name, state, extra)
+	}
+	fmt.Println("\n用法：xfm plugins <站点目录> enable|disable <插件名>")
+	fmt.Println("说明：也可在 xfm.config.json 的 plugins 数组里启用；plugins/<name>.json 优先。")
+	return nil
 }
 
 func cmdThemes(_ []string) error {
@@ -250,6 +315,8 @@ func printHelp() {
   xfm create <目录> [模板]    新建站点脚手架（blog 或 docs，默认 blog）
   xfm serve [目录]            构建并启动预览服务器（http://127.0.0.1:4173）
   xfm themes                  列出所有可加载的主题及搜索路径
+  xfm plugins <目录> [enable|disable <插件>]
+                              查看内置插件并启用/关闭（写入 plugins/<name>.json）
   xfm install-themes [src] [dest]
                               安装外部主题：
                                 不带参数 — 把可执行文件旁 themes/ 安装到用户缓存

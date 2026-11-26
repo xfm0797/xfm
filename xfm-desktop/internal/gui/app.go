@@ -19,6 +19,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"xfmdesk/internal/frontmatter"
+	"xfmdesk/internal/plugin"
 	"xfmdesk/internal/scaffold"
 	xsite "xfmdesk/internal/site"
 )
@@ -71,6 +72,7 @@ func (a *App) buildUI() {
 		widget.NewToolbarAction(theme.MediaPlayIcon(), a.previewBrowser),
 		widget.NewToolbarSeparator(),
 		widget.NewToolbarAction(theme.ViewRefreshIcon(), a.refreshFiles),
+		widget.NewToolbarAction(theme.SettingsIcon(), a.managePlugins),
 	)
 
 	a.list = widget.NewList(
@@ -307,4 +309,47 @@ func (a *App) updatePreviewNow() {
 
 func (a *App) setStatus(msg string) {
 	a.status.SetText(msg)
+}
+
+// managePlugins 打开插件管理面板：勾选即启用，写入 plugins/<name>.json。
+func (a *App) managePlugins() {
+	if a.root == "" {
+		a.setStatus("请先打开站点")
+		return
+	}
+	cfg, err := xsite.LoadConfig(a.root)
+	if err != nil {
+		dialog.ShowError(err, a.win)
+		return
+	}
+	entries := plugin.Status(a.root, cfg.Raw)
+	checks := make([]*widget.Check, len(entries))
+	box := container.NewVBox()
+	for i, e := range entries {
+		c := widget.NewCheck(e.Name, nil)
+		c.SetChecked(e.Enabled)
+		checks[i] = c
+		box.Add(c)
+	}
+	content := container.NewVScroll(box)
+	content.SetMinSize(fyne.NewSize(320, 420))
+	d := dialog.NewCustomConfirm("插件管理（勾选即启用）", "保存", "取消", content, func(ok bool) {
+		if !ok {
+			return
+		}
+		changed := 0
+		for i, e := range entries {
+			if checks[i].Checked == e.Enabled {
+				continue
+			}
+			if err := plugin.SetEnabled(a.root, e.Name, checks[i].Checked); err != nil {
+				dialog.ShowError(err, a.win)
+				return
+			}
+			changed++
+		}
+		a.setStatus(fmt.Sprintf("插件配置已更新（%d 项），重新构建后生效", changed))
+	}, a.win)
+	d.Resize(fyne.NewSize(360, 520))
+	d.Show()
 }
