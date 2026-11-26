@@ -1,0 +1,18 @@
+{% extend "base.html" %}
+{% block main %}
+<section class="hero small">
+  <p class="eyebrow">分类</p>
+  <h1>{{ page.title }}</h1>
+  {% if page.description %}<p class="lead">{{ page.description }}</p>{% endif %}
+</section>
+
+<div class="term-grid">
+  {% for t in page.data.terms %}<a class="term-card" href="{{ t.url }}">
+    <span class="term-name">{{ t.name }}</span>
+    <span class="term-count">{{ t.count }} 篇</span>
+    {% if t.latest %}<span class="term-latest">最新 · {{ t.latest.title }}</span>{% endif %}
+  </a>
+  {% else %}<p class="empty">还没有分类。在文章 front-matter 里加一行 <code>category: 技术</code> 即可。</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,146 @@
+package scaffold
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"xfmdesk/assets"
+)
+
+// CreateOptions 新建站点参数。
+type CreateOptions struct {
+	Dir      string
+	Title    string
+	Template string // blog / docs
+	Force    bool
+}
+
+// Create 生成一个可直接构建的站点。
+func Create(opt CreateOptions) error {
+	if opt.Template == "" {
+		opt.Template = "blog"
+	}
+	dir := opt.Dir
+	if dir == "" {
+		return fmt.Errorf("未指定站点目录")
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return err
+	}
+	if hasConfig(abs) && !opt.Force {
+		return fmt.Errorf("目录已是一个站点：%s（如需覆盖请使用 Force）", abs)
+	}
+	title := opt.Title
+	if title == "" {
+		title = filepath.Base(abs)
+	}
+	if err := os.MkdirAll(abs, 0o755); err != nil {
+		return err
+	}
+
+	layout := "post.html"
+	theme := "default"
+	nav := []map[string]string{
+		{"title": "首页", "url": "/"},
+		{"title": "分类", "url": "/categories/"},
+		{"title": "归档", "url": "/archives/"},
+		{"title": "关于", "url": "/about/"},
+	}
+	if opt.Template == "docs" {
+		layout = "page.html"
+		theme = "docs"
+		nav = []map[string]string{
+			{"title": "首页", "url": "/"},
+			{"title": "关于", "url": "/about/"},
+		}
+	}
+
+	cfg := map[string]any{
+		"site": map[string]any{
+			"title":       title,
+			"description": "由 xfm 桌面版生成的站点",
+			"lang":        "zh-CN",
+			"base":        "/",
+			"nav":         nav,
+		},
+		"theme":      "themes/" + theme,
+		"pagination": map[string]any{"perPage": 9},
+		"defaults":   map[string]any{"layout": layout},
+		"server":     map[string]any{"port": 4173},
+	}
+	cfgBytes, _ := json.MarshalIndent(cfg, "", "  ")
+	if err := writeFile(abs, "xfm.config.json", string(cfgBytes)+"\n"); err != nil {
+		return err
+	}
+
+	files := map[string]string{
+		"content/index.md": "---\ntitle: 首页\nlayout: index.html\n---\n",
+		"content/about.md": fmt.Sprintf("---\ntitle: 关于\nlayout: page.html\ndescription: 关于这个站点。\n---\n\n# 关于\n\n这是用 Go 版 xfm 桌面端搭建的站点。\n\n## 开始写作\n\n```bash\n新建文章 → 编辑 → 构建\n```\n"),
+	}
+	if opt.Template == "docs" {
+		files["content/docs/getting-started.md"] = "---\ntitle: 快速开始\ngroup: 使用指南\nweight: 1\nlayout: page.html\n---\n\n# 快速开始\n\n在桌面端左侧目录树中新建文档，右侧编辑并实时预览。\n"
+		files["content/docs/configuration.md"] = "---\ntitle: 配置\ngroup: 使用指南\nweight: 2\nlayout: page.html\n---\n\n# 配置\n\n编辑 `xfm.config.json` 即可，所有字段都有合理默认值。\n"
+	} else {
+		today := time.Now().Format("2006-01-02")
+		files["content/posts/hello-world.md"] = fmt.Sprintf(`---
+title: 你好，世界
+date: %s
+tags: [随笔]
+category: 随笔
+description: 第一篇文章。
+---
+
+# 你好，世界
+
+这是第一篇文章。直接写 Markdown 即可，支持：
+
+- **强调**、[链接](https://example.com)、`+"`行内代码`"+`
+- 表格、任务列表、提示容器
+
+::: tip 提示
+点击工具栏的「构建」即可生成静态站点。
+:::
+`, today)
+	}
+	for rel, content := range files {
+		if err := writeFile(abs, rel, content); err != nil {
+			return err
+		}
+	}
+
+	// 内嵌主题
+	themeDir := filepath.Join(abs, "themes", theme)
+	if err := assets.WriteEmbeddedTheme(themeDir, theme); err != nil {
+		return err
+	}
+	_ = writeFile(abs, ".gitignore", "dist/\n.xfm/\nnode_modules/\n")
+	_ = writeFile(abs, "public/.gitkeep", "")
+	return nil
+}
+
+func hasConfig(dir string) bool {
+	for _, f := range []string{"xfm.config.json", "xfm.config.mjs", "xfm.config.js", "xfm.config.cjs"} {
+		if _, err := os.Stat(filepath.Join(dir, f)); err == nil {
+			return true
+		}
+	}
+	if data, err := os.ReadFile(filepath.Join(dir, "package.json")); err == nil {
+		var pkg map[string]any
+		if json.Unmarshal(data, &pkg) == nil && pkg["xfm"] != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func writeFile(root, rel, content string) error {
+	abs := filepath.Join(root, rel)
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(abs, []byte(content), 0o644)
+}

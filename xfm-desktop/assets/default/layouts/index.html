@@ -1,0 +1,57 @@
+{% extend "base.html" %}
+{% block main %}
+<div class="home">
+  <div class="home-main">
+    <section class="hero">
+      <p class="eyebrow">最新文章</p>
+      <h1>{{ site.title }}</h1>
+      {% if site.description %}<p class="lead">{{ site.description }}</p>{% endif %}
+    </section>
+
+    <div class="post-grid">
+      {% include "post-list.html" %}
+    </div>
+
+    {% include "pager.html" %}
+  </div>
+
+  <aside class="home-side">
+    <section class="widget about">
+      <div class="widget-mark" aria-hidden="true"></div>
+      <h3 class="widget-title">{{ site.title }}</h3>
+      {% if site.description %}<p class="widget-text">{{ site.description }}</p>{% endif %}
+      <div class="widget-links">
+        {% if site.author %}<span>{{ site.author }}</span>{% endif %}
+        <a href="/feed.xml">RSS 订阅</a>
+      </div>
+    </section>
+
+    {% if site.categories.length %}
+    <section class="widget">
+      <h3 class="widget-title">分类</h3>
+      <ul class="side-list">
+        {% for c in site.categories %}{% if loop.index <= 6 %}
+        <li><a href="{{ c.url }}">{{ c.name }}</a><span class="side-count">{{ c.count }}</span></li>
+        {% endif %}{% endfor %}
+      </ul>
+      {% if site.categories.length > 6 %}<a class="widget-more" href="/categories/">全部分类 →</a>{% endif %}
+    </section>
+    {% endif %}
+
+    {% if site.tags.length %}
+    <section class="widget">
+      <h3 class="widget-title">标签</h3>
+      <div class="side-tags">
+        {% for t in site.tags %}{% if loop.index <= 12 %}<a class="chip" href="{{ t.url }}">{{ t.name }}</a>{% endif %}{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="widget">
+      <h3 class="widget-title">归档</h3>
+      <p class="widget-text">共 {{ postsTotal }} 篇文章，按时间线整理。</p>
+      <a class="widget-more" href="/archives/">浏览归档 →</a>
+    </section>
+  </aside>
+</div>
+{% endblock %}
