@@ -26,3 +26,6 @@ Thumbs.db
 
 # 本地工具数据（AI 会话记忆等，不入库）
 .workbuddy/
+
+# 本地上传文件（不入库）
+.uploads/
