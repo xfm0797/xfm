@@ -17,6 +17,10 @@ import (
 	xsite "xfmdesk/internal/site"
 )
 
+// version 是桌面端版本号；发布时可直接改这里，或通过
+// -ldflags "-X main.version=x.y.z" 覆盖。
+var version = "0.1.1"
+
 func main() {
 	if len(os.Args) > 1 {
 		if err := runCLI(os.Args[1:]); err != nil {
@@ -69,7 +73,7 @@ func runCLI(args []string) error {
 		}
 		return cmdInstallThemes(src, dest)
 	case "version", "-v", "--version":
-		fmt.Println("xfm 桌面版 · 纯 Go 重写内核（主题从外部目录加载）")
+		fmt.Printf("xfm 桌面版 v%s · 纯 Go 重写内核（主题从外部目录加载）\n", version)
 		return nil
 	case "help", "-h", "--help":
 		printHelp()
