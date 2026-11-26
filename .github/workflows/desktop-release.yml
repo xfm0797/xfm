@@ -107,6 +107,7 @@ jobs:
         run: |
           export PATH="/mingw64/bin:$PATH"
           mkdir -p ../stage/windows-amd64
+          # 保持 console 子系统让 CLI 同步输出；GUI 启动后由 internal/winconsole 关闭控制台窗口
           go build -trimpath -ldflags "-s -w" -o ../stage/windows-amd64/xfm.exe .
 
       - name: Package (Linux)

@@ -15,6 +15,7 @@ import (
 	"xfmdesk/internal/publish"
 	"xfmdesk/internal/scaffold"
 	xsite "xfmdesk/internal/site"
+	"xfmdesk/internal/winconsole"
 )
 
 // version 是桌面端版本号；发布时可直接改这里，或通过
@@ -29,6 +30,8 @@ func main() {
 		}
 		return
 	}
+	// GUI 模式：关闭 Windows 随程序分配的控制台窗口，避免多出一个终端。
+	winconsole.HideConsole()
 	gui.Run()
 }
 

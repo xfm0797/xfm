@@ -16,6 +16,7 @@
 - **多平台发布**：构建后一键推送到 GitHub Pages / Cloudflare Pages / Netlify / Vercel
 - **发布设置**：图形界面填写各平台仓库、项目与 Token，Token 保存在本机（0600）
 - **插件管理**：工具栏「插件」打开面板，勾选即启用，配置写入站点 `plugins/<name>.json`
+- **原生图标**：窗口/任务栏使用闪电图标，Windows 可执行文件带同款图标与 DPI 清单
 - **外置资源**：主题与插件不嵌入二进制，运行时从搜索路径动态发现
 
 ## 下载
@@ -33,6 +34,8 @@
 
 > macOS 首次打开若被 Gatekeeper 拦截，可在「系统设置 → 隐私与安全性」中允许，或执行
 > `xattr -dr com.apple.quarantine ./xfm`。Windows 的 SmartScreen 提示同理。
+
+Windows 双击启动时，程序会自动关闭控制台子系统分配的终端窗口；在命令行中运行时输出不受影响。
 
 ## 快速开始
 
@@ -161,12 +164,24 @@ go build -trimpath -ldflags "-s -w" -o xfm .
 go test ./...
 ```
 
+### 图标
+
+图标源文件为 `internal/gui/assets/icon.png`（512×512），通过 `go:embed` 用于窗口与任务栏；Windows 的 exe 图标和 DPI 清单来自根目录的 `rsrc_windows_amd64.syso`。修改图标后重新生成：
+
+```bash
+go install github.com/akavel/rsrc@latest
+convert internal/gui/assets/icon.png -define icon:auto-resize=256,128,64,48,32,16 \
+  internal/gui/assets/icon.ico
+"$(go env GOPATH)/bin/rsrc" -manifest build/windows/xfm.exe.manifest \
+  -ico internal/gui/assets/icon.ico -arch amd64 -o rsrc_windows_amd64.syso
+```
+
 ## 桌面端发布
 
 推送 `desktop-v*`（或 `v*`）标签会触发 [Desktop Release](../.github/workflows/desktop-release.yml)：在 Linux / macOS（arm64 + amd64）/ Windows 上编译，并把四个平台包附加到 GitHub Release。
 
 ```bash
-git tag desktop-v0.1.1 && git push origin desktop-v0.1.1
+git tag desktop-v0.1.2 && git push origin desktop-v0.1.2
 ```
 
 用 `desktop-` 前缀可以避免与 Node 版 xfm 的 `v*` 标签冲突。

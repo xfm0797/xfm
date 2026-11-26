@@ -3,6 +3,7 @@ package gui
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -46,6 +47,9 @@ type App struct {
 	debounce   *time.Timer
 }
 
+//go:embed assets/icon.png
+var iconPNG []byte
+
 // Run 启动桌面应用。
 func Run() {
 	// 确保存在可用的 D-Bus 会话总线，避免 Fyne 启动时因缺少 dbus-launch 报错。
@@ -53,7 +57,10 @@ func Run() {
 	defer cleanupSession()
 
 	a := &App{fyneApp: app.NewWithID("pw.lovou.xfm.desktop")}
+	icon := fyne.NewStaticResource("icon.png", iconPNG)
+	a.fyneApp.SetIcon(icon)
 	a.win = a.fyneApp.NewWindow("xfm 桌面版 · 静态博客工作台")
+	a.win.SetIcon(icon)
 	a.buildUI()
 	a.win.Resize(fyne.NewSize(1180, 760))
 	a.win.SetOnClosed(func() {
