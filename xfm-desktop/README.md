@@ -12,6 +12,7 @@
 - **实时预览**：中间编辑、右侧富文本预览，输入 250ms 防抖
 - **一键构建**：工具栏 ✓ 直接产出 `dist/`，状态栏显示页数、资源数与输出文件数
 - **浏览器预览**：构建后启动本地静态服务并打开系统浏览器
+- **多平台发布**：构建后一键推送到 GitHub Pages / Cloudflare Pages / Netlify / Vercel
 - **插件管理**：齿轮图标打开面板，勾选即启用，配置写入站点 `plugins/<name>.json`
 - **外置资源**：主题与插件不嵌入二进制，运行时从搜索路径动态发现
 
@@ -45,9 +46,51 @@
 xfm create my-blog     # 创建站点（blog / docs 模板）
 xfm build my-blog      # 生产构建到 my-blog/dist
 xfm serve my-blog      # 构建并启动本地预览（默认 127.0.0.1:4173）
+xfm publish my-blog    # 构建并发布到 publish.targets 选定的平台
 xfm themes             # 查看主题搜索路径与可用主题
 xfm plugins my-blog    # 查看插件启用状态
 ```
+
+## 发布
+
+在站点配置里选择目标平台并填写非敏感参数，凭据只从环境变量读取：
+
+```json
+{
+  "publish": {
+    "targets": ["github", "cloudflare"],
+    "github": { "repo": "owner/repo", "branch": "gh-pages" },
+    "cloudflare": { "accountId": "your-account-id", "project": "my-blog", "branch": "main" },
+    "netlify": { "siteId": "your-site-id" },
+    "vercel": { "project": "my-blog", "teamId": "" }
+  }
+}
+```
+
+| 平台 | 环境变量 | 可选 |
+| --- | --- | --- |
+| GitHub Pages | `GITHUB_TOKEN` 或 `GH_TOKEN`（缺省时复用本机 git 凭据） | `GITHUB_REPO` |
+| Cloudflare Pages | `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID` | — |
+| Netlify | `NETLIFY_AUTH_TOKEN` | `NETLIFY_SITE_ID` |
+| Vercel | `VERCEL_TOKEN` | `VERCEL_TEAM_ID` |
+
+```bash
+xfm publish my-blog --dry-run                  # 只校验配置与文件，不上传
+xfm publish my-blog                            # 发布到 publish.targets 里的全部平台
+xfm publish my-blog --target github,netlify    # 临时指定平台
+xfm publish my-blog --message "deploy: 0.1.0"  # GitHub Pages 提交信息
+```
+
+单个平台失败不会中断其他平台，命令结束时会汇总成功地址与失败原因。
+
+图形界面：点击工具栏上传图标（↑），勾选平台后「构建并发布」，完成后弹窗列出各平台地址。
+
+![发布面板](docs/publish.png)
+
+- GitHub Pages 用一次提交强制推送到 `gh-pages` 分支，并自动写入 `.nojekyll`
+- Cloudflare Pages 走 Direct Upload：按 sha256 去重后直传，无需先建 CI 流水线
+- Netlify 把 `dist` 打成 zip 走 Zip Deploy
+- Vercel 通过 v13 Deployments 接口内联上传（`target` 默认 `production`）
 
 ## 插件
 

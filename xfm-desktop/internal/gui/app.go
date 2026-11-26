@@ -2,6 +2,7 @@
 package gui
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -20,6 +21,7 @@ import (
 
 	"xfmdesk/internal/frontmatter"
 	"xfmdesk/internal/plugin"
+	"xfmdesk/internal/publish"
 	"xfmdesk/internal/scaffold"
 	xsite "xfmdesk/internal/site"
 )
@@ -70,6 +72,7 @@ func (a *App) buildUI() {
 		widget.NewToolbarAction(theme.DocumentSaveIcon(), a.saveFile),
 		widget.NewToolbarAction(theme.ConfirmIcon(), a.buildSite),
 		widget.NewToolbarAction(theme.MediaPlayIcon(), a.previewBrowser),
+		widget.NewToolbarAction(theme.UploadIcon(), a.publishSite),
 		widget.NewToolbarSeparator(),
 		widget.NewToolbarAction(theme.ViewRefreshIcon(), a.refreshFiles),
 		widget.NewToolbarAction(theme.SettingsIcon(), a.managePlugins),
@@ -356,4 +359,118 @@ func (a *App) managePlugins() {
 	}, a.win)
 	d.Resize(fyne.NewSize(360, 520))
 	d.Show()
+}
+
+// publishLabels 是平台标识 → 展示名。
+var publishLabels = map[string]string{
+	publish.TargetGitHub:     "GitHub Pages",
+	publish.TargetCloudflare: "Cloudflare Pages",
+	publish.TargetNetlify:    "Netlify",
+	publish.TargetVercel:     "Vercel",
+}
+
+func publishLabel(name string) string {
+	if l, ok := publishLabels[name]; ok {
+		return l
+	}
+	return name
+}
+
+// publishSite 构建站点并分发到勾选的平台；凭据从环境变量读取。
+func (a *App) publishSite() {
+	if a.root == "" {
+		a.setStatus("请先打开站点")
+		return
+	}
+	root := a.root
+	cfg, err := publish.Load(root)
+	if err != nil {
+		dialog.ShowError(err, a.win)
+		return
+	}
+	// 面板总是列出全部平台，配置文件里的 publish.targets 作为默认勾选
+	names := publish.All()
+	checks := make([]*widget.Check, len(names))
+	box := container.NewVBox(widget.NewLabel("选择要发布的平台（凭据从环境变量读取）："))
+	for i, name := range names {
+		c := widget.NewCheck(publishLabel(name), nil)
+		c.SetChecked(containsStr(cfg.Targets, name))
+		checks[i] = c
+		box.Add(c)
+	}
+	content := container.NewVScroll(box)
+	content.SetMinSize(fyne.NewSize(320, 220))
+	d := dialog.NewCustomConfirm("发布站点", "构建并发布", "取消", content, func(ok bool) {
+		if !ok {
+			return
+		}
+		var selected []string
+		for i, name := range names {
+			if checks[i].Checked {
+				selected = append(selected, name)
+			}
+		}
+		if len(selected) == 0 {
+			a.setStatus("没有选择发布平台")
+			return
+		}
+		a.setStatus("正在构建…")
+		go func() {
+			s, buildErr := xsite.BuildSite(root, "production")
+			if buildErr != nil {
+				fyne.Do(func() {
+					dialog.ShowError(buildErr, a.win)
+					a.setStatus("发布中止：构建失败")
+				})
+				return
+			}
+			dist := filepath.Join(root, s.Cfg.Str("outDir"))
+			fyne.Do(func() {
+				a.setStatus(fmt.Sprintf("构建完成（%d 页），开始发布…", s.Stats.Pages))
+			})
+			outcomes := publish.Run(context.Background(), cfg, publish.Options{
+				DistDir: dist,
+				Root:    root,
+				Targets: selected,
+				Log: func(msg string) {
+					fyne.Do(func() { a.setStatus(msg) })
+				},
+			})
+			fyne.Do(func() { a.showPublishResults(outcomes) })
+		}()
+	}, a.win)
+	d.Resize(fyne.NewSize(380, 300))
+	d.Show()
+}
+
+func (a *App) showPublishResults(outcomes []publish.Outcome) {
+	var lines []string
+	failed := 0
+	for _, o := range outcomes {
+		if o.Err != nil {
+			lines = append(lines, fmt.Sprintf("✗ %s\n%s", publishLabel(o.Target), o.Err.Error()))
+			failed++
+			continue
+		}
+		lines = append(lines, fmt.Sprintf("✓ %s\n%s", publishLabel(o.Target), o.Result.URL))
+	}
+	title := "发布完成"
+	if failed > 0 {
+		title = fmt.Sprintf("发布完成（%d 个失败）", failed)
+		a.setStatus(title)
+	} else {
+		a.setStatus("发布完成")
+	}
+	label := widget.NewLabel(strings.Join(lines, "\n\n"))
+	label.Wrapping = fyne.TextWrapWord
+	dialog.ShowCustom(title, "关闭", container.NewVScroll(label), a.win)
+}
+
+func containsStr(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }

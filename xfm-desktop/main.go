@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"xfmdesk/assets"
 	"xfmdesk/internal/gui"
 	"xfmdesk/internal/plugin"
+	"xfmdesk/internal/publish"
 	"xfmdesk/internal/scaffold"
 	xsite "xfmdesk/internal/site"
 )
@@ -51,6 +53,8 @@ func runCLI(args []string) error {
 			dir = rest[0]
 		}
 		return cmdServe(dir)
+	case "publish", "deploy":
+		return cmdPublish(rest)
 	case "themes":
 		return cmdThemes(rest)
 	case "plugins":
@@ -71,7 +75,7 @@ func runCLI(args []string) error {
 		printHelp()
 		return nil
 	default:
-		return fmt.Errorf("未知命令 %q，可用：build / create / serve / themes / install-themes", cmd)
+		return fmt.Errorf("未知命令 %q，可用：build / create / serve / publish / themes / plugins / install-themes", cmd)
 	}
 }
 
@@ -132,6 +136,118 @@ func cmdServe(dir string) error {
 	fmt.Println("  Ctrl+C 停止")
 	defer srv.Close()
 	select {}
+}
+
+func cmdPublish(args []string) error {
+	var (
+		dir     = "."
+		targets []string
+		dryRun  bool
+		message string
+	)
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--dry-run" || arg == "-n":
+			dryRun = true
+		case arg == "--target" || arg == "-t":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--target 缺少参数")
+			}
+			targets = append(targets, splitList(args[i])...)
+		case strings.HasPrefix(arg, "--target="):
+			targets = append(targets, splitList(strings.TrimPrefix(arg, "--target="))...)
+		case arg == "--message" || arg == "-m":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--message 缺少参数")
+			}
+			message = args[i]
+		case strings.HasPrefix(arg, "--message="):
+			message = strings.TrimPrefix(arg, "--message=")
+		case arg == "--help" || arg == "-h":
+			fmt.Println("用法：xfm publish [目录] [--target github,cloudflare,netlify,vercel] [--dry-run] [--message 文案]")
+			return nil
+		case strings.HasPrefix(arg, "-"):
+			return fmt.Errorf("未知参数 %q", arg)
+		default:
+			if dir != "." {
+				return fmt.Errorf("只能指定一个站点目录")
+			}
+			dir = arg
+		}
+	}
+
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("⚡ xfm publish  %s\n\n", abs)
+	s, err := xsite.BuildSite(abs, "production")
+	if err != nil {
+		return fmt.Errorf("构建失败：%w", err)
+	}
+	fmt.Printf("  ✓ 页面 %d 个，资源 %d 个\n", s.Stats.Pages, s.Stats.Assets)
+
+	cfg, err := publish.Load(abs)
+	if err != nil {
+		return err
+	}
+	chosen := targets
+	if len(chosen) == 0 {
+		chosen = cfg.Targets
+	}
+	if len(chosen) == 0 {
+		return fmt.Errorf("没有可发布的平台：请在 xfm.config.json 的 publish.targets 中选择，或使用 --target")
+	}
+	for _, name := range chosen {
+		if !publish.IsKnown(name) {
+			return fmt.Errorf("未知平台 %q（可用：%s）", name, strings.Join(publish.All(), ", "))
+		}
+	}
+
+	dist := filepath.Join(abs, s.Cfg.Str("outDir"))
+	outcomes := publish.Run(context.Background(), cfg, publish.Options{
+		DistDir: dist,
+		Root:    abs,
+		Targets: chosen,
+		DryRun:  dryRun,
+		Message: message,
+		Log:     func(msg string) { fmt.Println("  ·", msg) },
+	})
+
+	failed := 0
+	fmt.Println()
+	for _, o := range outcomes {
+		if o.Err != nil {
+			fmt.Printf("  ✗ %-10s %v\n", o.Target, o.Err)
+			failed++
+			continue
+		}
+		fmt.Printf("  ✓ %-10s %s\n", o.Target, o.Result.URL)
+		if o.Result.Detail != "" {
+			fmt.Printf("      %s\n", o.Result.Detail)
+		}
+	}
+	if dryRun {
+		fmt.Println("\n  提示：dry-run 模式，未实际上传。")
+	}
+	fmt.Println()
+	if failed > 0 {
+		return fmt.Errorf("%d 个平台发布失败", failed)
+	}
+	return nil
+}
+
+func splitList(s string) []string {
+	var out []string
+	for _, p := range strings.Split(s, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func cmdPlugins(args []string) error {
@@ -318,6 +434,9 @@ func printHelp() {
   xfm build [目录]            构建站点（默认当前目录）
   xfm create <目录> [模板]    新建站点脚手架（blog 或 docs，默认 blog）
   xfm serve [目录]            构建并启动预览服务器（http://127.0.0.1:4173）
+  xfm publish [目录] [--target github,cloudflare,netlify,vercel] [--dry-run]
+                              构建后发布到 publish.targets 选定的平台
+                              --message 自定义 GitHub Pages 提交信息
   xfm themes                  列出所有可加载的主题及搜索路径
   xfm plugins <目录> [enable|disable <插件>]
                               查看内置插件并启用/关闭（写入 plugins/<name>.json）
@@ -334,5 +453,11 @@ func printHelp() {
   2. 可执行文件旁的 themes/（分发目录）
   3. $XDG_DATA_HOME/xfm/themes 或 ~/.local/share/xfm/themes
   4. ~/.xfm/themes
-  5. 站点自己的 themes/`)
+  5. 站点自己的 themes/
+
+发布凭据（仅从环境变量读取）：
+  GitHub Pages     GITHUB_TOKEN 或 GH_TOKEN（缺省时复用 git 凭据）
+  Cloudflare Pages CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID
+  Netlify          NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID
+  Vercel           VERCEL_TOKEN（团队用 VERCEL_TEAM_ID）`)
 }
