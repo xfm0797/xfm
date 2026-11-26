@@ -26,9 +26,12 @@ type Site struct {
 
 	ThemeDir       string
 	SiteContext    map[string]any
-	Tags           []*term
+	Tags           []*term // site context 用：multiLang 时 count 只算默认语言
 	Categories     []*term
 	Series         []*term
+	AllTags        []*term // taxonomy 页用：全量，count=所有语言，items=所有语言
+	AllCategories  []*term
+	AllSeries      []*term
 	Collections    map[string]any
 	Languages      []string
 	DefaultLang    string
@@ -291,6 +294,9 @@ func (s *Site) collect() error {
 	resolver := newLinkResolver(index)
 	s.linkResolver = resolver
 
+	// 翻译分组：相同 translationKey 的页面互为翻译
+	s.groupTranslations(pages)
+
 	s.resolveCollections()
 	s.linkNeighbors()
 	s.aggregate()
@@ -302,6 +308,7 @@ func (s *Site) collect() error {
 	all = append(all, s.indexPages()...)
 	all = append(all, s.paginationPages()...)
 	all = append(all, s.collectionPages()...)
+	all = append(all, s.langIndexPages()...)
 	s.AllPages = all
 	return nil
 }
@@ -391,7 +398,8 @@ func (s *Site) aggregate() {
 			t.Posts = append(t.Posts, p)
 		}
 	}
-	build := func(m map[string]*term, names []string) []*term {
+	// 全量词条：count=所有语言, items=所有语言 — 供 taxonomy 页面使用
+	buildAll := func(m map[string]*term, names []string) []*term {
 		var list []*term
 		for _, name := range names {
 			t := m[name]
@@ -403,15 +411,52 @@ func (s *Site) aggregate() {
 		}
 		return list
 	}
-	s.Tags = build(tagMap, order["tags"])
-	s.Categories = build(catMap, order["categories"])
-	s.Series = build(serMap, order["series"])
+	s.AllTags = buildAll(tagMap, order["tags"])
+	s.AllCategories = buildAll(catMap, order["categories"])
+	s.AllSeries = buildAll(serMap, order["series"])
+
+	// site context 用：multiLang 时 count 只算默认语言，count=0 过滤
+	filterCount := func(t *term) int {
+		if !s.MultiLang {
+			return len(t.Posts)
+		}
+		n := 0
+		for _, p := range t.Posts {
+			if p.Lang == s.DefaultLang {
+				n++
+			}
+		}
+		return n
+	}
+	s.Tags = nil
+	for _, t := range s.AllTags {
+		c := filterCount(t)
+		if c > 0 {
+			s.Tags = append(s.Tags, &term{Name: t.Name, URL: t.URL, Count: c, Items: t.Items, Posts: t.Posts})
+		}
+	}
 	sort.SliceStable(s.Tags, func(i, j int) bool {
 		if s.Tags[i].Count != s.Tags[j].Count {
 			return s.Tags[i].Count > s.Tags[j].Count
 		}
 		return strings.ToLower(s.Tags[i].Name) < strings.ToLower(s.Tags[j].Name)
 	})
+
+	s.Categories = nil
+	for _, t := range s.AllCategories {
+		c := filterCount(t)
+		if c > 0 {
+			s.Categories = append(s.Categories, &term{Name: t.Name, URL: t.URL, Count: c, Items: t.Items, Posts: t.Posts})
+		}
+	}
+
+	s.Series = nil
+	for _, t := range s.AllSeries {
+		c := filterCount(t)
+		if c > 0 {
+			s.Series = append(s.Series, &term{Name: t.Name, URL: t.URL, Count: c, Items: t.Items, Posts: t.Posts})
+		}
+	}
 }
 
 func (s *Site) buildSiteContext(siteData map[string]any) {
@@ -440,6 +485,22 @@ func (s *Site) buildSiteContext(siteData map[string]any) {
 		}
 	}
 	ctx["posts"] = posts
+	// postsByLang: 每种语言各自的文章流
+	postsByLang := map[string][]any{}
+	for _, lang := range s.Languages {
+		var pl []any
+		for _, p := range s.ContentPages {
+			if !s.inStream(p) {
+				continue
+			}
+			if p.Lang != lang {
+				continue
+			}
+			pl = append(pl, s.serializePage(p))
+		}
+		postsByLang[lang] = pl
+	}
+	ctx["postsByLang"] = postsByLang
 	ctx["tags"] = s.stripTerms(s.Tags)
 	ctx["categories"] = s.stripTerms(s.Categories)
 	ctx["series"] = s.stripTerms(s.Series)
@@ -487,22 +548,93 @@ func (s *Site) inDefaultStream(p *Page) bool {
 }
 
 func (s *Site) linkNeighbors() {
-	var stream []*Page
+	// 多语言站按语言各串各的，翻译版本不会跳到另一种语言的文章上
+	groups := map[string][]*Page{}
 	for _, p := range s.ContentPages {
-		if s.inStream(p) {
-			stream = append(stream, p)
+		if !s.inStream(p) {
+			continue
+		}
+		k := ""
+		if s.MultiLang {
+			k = p.Lang
+		}
+		groups[k] = append(groups[k], p)
+	}
+	for _, stream := range groups {
+		for i, cur := range stream {
+			if i+1 < len(stream) {
+				prev := stream[i+1]
+				cur.Data["prev"] = map[string]any{"url": prev.URL, "title": prev.Title}
+			} else {
+				delete(cur.Data, "prev")
+			}
+			if i-1 >= 0 {
+				next := stream[i-1]
+				cur.Data["next"] = map[string]any{"url": next.URL, "title": next.Title}
+			} else {
+				delete(cur.Data, "next")
+			}
 		}
 	}
-	for i, cur := range stream {
-		if i+1 < len(stream) {
-			prev := stream[i+1]
-			cur.Data["prev"] = map[string]any{"url": prev.URL, "title": prev.Title}
+}
+
+func (s *Site) groupTranslations(pages []*Page) {
+	if !s.MultiLang {
+		return
+	}
+	transMap := map[string][]*Page{}
+	for _, p := range pages {
+		key := toString(p.Data["translationKey"])
+		if key == "" {
+			continue
 		}
-		if i-1 >= 0 {
-			next := stream[i-1]
-			cur.Data["next"] = map[string]any{"url": next.URL, "title": next.Title}
+		transMap[key] = append(transMap[key], p)
+	}
+	for _, p := range pages {
+		key := toString(p.Data["translationKey"])
+		if key == "" {
+			p.Data["translations"] = []any{}
+			continue
+		}
+		group := transMap[key]
+		if len(group) <= 1 {
+			p.Data["translations"] = []any{}
+			continue
+		}
+		var ts []any
+		for _, q := range group {
+			ts = append(ts, map[string]any{"lang": q.Lang, "url": q.URL, "title": q.Title})
+		}
+		p.Data["translations"] = ts
+	}
+
+	// 多语言站给首页补一份翻译表（当首页没 translationKey 时）
+	var home *Page
+	for _, p := range pages {
+		if p.URL == "/" {
+			home = p
+			break
 		}
 	}
+	if home != nil && toString(home.Data["translationKey"]) == "" {
+		rooms := s.langHomes()
+		if len(rooms) > 1 {
+			home.Data["translations"] = rooms
+		}
+	}
+}
+
+// langHomes 返回每种语言的首页入口列表 [{lang, url}]。
+func (s *Site) langHomes() []any {
+	var rooms []any
+	for _, lang := range s.Languages {
+		url := NormalizePath("/" + lang + "/")
+		if lang == s.DefaultLang {
+			url = "/"
+		}
+		rooms = append(rooms, map[string]any{"lang": lang, "url": url})
+	}
+	return rooms
 }
 
 func (s *Site) renderAll() error {

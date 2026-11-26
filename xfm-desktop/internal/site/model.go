@@ -120,7 +120,7 @@ func (s *Site) serializePage(p *Page) map[string]any {
 		"category":     p.Category,
 		"series":       p.Series,
 		"lang":         p.Lang,
-		"translations": []any{},
+		"translations": p.Data["translations"],
 		"weight":       int64(p.Weight),
 		"layout":       p.Layout,
 		"data":         p.Data,

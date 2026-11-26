@@ -82,7 +82,7 @@ func (s *Site) taxonomyPages() []*Page {
 		kind string
 		list []*term
 	}{
-		{"tags", s.Tags}, {"categories", s.Categories}, {"series", s.Series},
+		{"tags", s.AllTags}, {"categories", s.AllCategories}, {"series", s.AllSeries},
 	}
 	pag := s.Cfg.Section("pagination")
 	paginate := pag["enabled"] != false && pag["taxonomy"] != false
@@ -537,4 +537,98 @@ func itoa(n int) string {
 		b[i] = '-'
 	}
 	return string(b[i:])
+}
+
+// langIndexPages 为非默认语言生成 /<lang>/ 入口页。
+func (s *Site) langIndexPages() []*Page {
+	if !s.MultiLang {
+		return nil
+	}
+	pag := s.Cfg.Section("pagination")
+	if pag["enabled"] == false {
+		return nil
+	}
+	var home *Page
+	for _, p := range s.ContentPages {
+		if p.URL == "/" {
+			home = p
+			break
+		}
+	}
+	if home == nil || !s.layoutUsesPosts(home.Layout) {
+		return nil
+	}
+	perPage := 9
+	if n, ok := toInt(pag["perPage"]); ok && n > 0 {
+		perPage = n
+	}
+	homeTitle := home.Title
+	homeDesc := home.Description
+	rooms := s.langHomes()
+
+	var out []*Page
+	for _, lang := range s.Languages[1:] {
+		postsAny := s.sitePostsByLang(lang)
+		if len(postsAny) == 0 {
+			continue
+		}
+		root := NormalizePath("/" + lang + "/")
+		totalPages := 1
+		if perPage > 0 {
+			totalPages = (len(postsAny) + perPage - 1) / perPage
+			if totalPages < 1 {
+				totalPages = 1
+			}
+		}
+		pageURL := func(n int) string {
+			if n == 1 {
+				return root
+			}
+			return NormalizePath(root + "page/" + itoa(n) + "/")
+		}
+		zh := strings.HasPrefix(strings.ToLower(lang), "zh")
+		for i := 1; i <= totalPages; i++ {
+			var chunk []any
+			if perPage > 0 {
+				chunk = sliceAny(postsAny, (i-1)*perPage, i*perPage)
+			} else {
+				chunk = postsAny
+			}
+			title := homeTitle
+			if i > 1 {
+				if zh {
+					title += " · 第 " + itoa(i) + " 页"
+				} else {
+					title += " · Page " + itoa(i)
+				}
+			}
+			var pagination any
+			if perPage > 0 {
+				pagination = map[string]any{
+					"current": int64(i), "totalPages": int64(totalPages), "perPage": int64(perPage),
+					"total": int64(len(postsAny)), "url": pageURL(i),
+					"prev": prevURL(i, pageURL), "next": nextURL(i, totalPages, pageURL),
+					"links": pagerLinks(i, totalPages, pageURL),
+					"posts": chunk,
+				}
+			}
+			out = append(out, &Page{
+				Key: "lang:" + lang + ":" + itoa(i), URL: pageURL(i), Layout: home.Layout, Title: title,
+				Description: homeDesc, Lang: lang, Taxonomy: true, Ext: ".html",
+				Data: map[string]any{
+					"type":         "index",
+					"index":        "home",
+					"lang":         lang,
+					"translations": rooms,
+					"pagination":   pagination,
+				},
+			})
+		}
+	}
+	return out
+}
+
+func (s *Site) sitePostsByLang(lang string) []any {
+	m, _ := s.SiteContext["postsByLang"].(map[string][]any)
+	return m[lang]
 }
