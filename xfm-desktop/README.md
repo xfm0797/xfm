@@ -149,13 +149,15 @@ go build -trimpath -ldflags "-s -w" -o xfm .
 go test ./...
 ```
 
-## 发布
+## 桌面端发布
 
-推送 `v*` 标签会触发 [Desktop Release](../.github/workflows/desktop-release.yml)：在 Linux / macOS（arm64 + amd64）/ Windows 上编译，并把四个平台包附加到 GitHub Release。
+推送 `desktop-v*`（或 `v*`）标签会触发 [Desktop Release](../.github/workflows/desktop-release.yml)：在 Linux / macOS（arm64 + amd64）/ Windows 上编译，并把四个平台包附加到 GitHub Release。
 
 ```bash
-git tag v0.5.0 && git push origin v0.5.0
+git tag desktop-v0.1.1 && git push origin desktop-v0.1.1
 ```
+
+用 `desktop-` 前缀可以避免与 Node 版 xfm 的 `v*` 标签冲突。
 
 ## 许可证
 

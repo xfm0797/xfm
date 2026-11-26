@@ -14,7 +14,7 @@ name: Desktop Release
 on:
   push:
     branches: [xfm-desktop]
-    tags: ['v*']
+    tags: ['v*', 'desktop-v*']
   pull_request:
     branches: [xfm-desktop]
     paths:
@@ -138,7 +138,7 @@ jobs:
   release:
     name: Publish GitHub Release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/desktop-v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
